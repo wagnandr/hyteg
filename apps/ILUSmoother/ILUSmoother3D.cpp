@@ -112,7 +112,8 @@ std::shared_ptr< hyteg::Solver< OperatorType > > createSmoother3D( walberla::con
          numerator.enumerate( level );
       auto cell_smoother = std::make_shared< hyteg::P1LDLTInplaceCellSmoother< OperatorType, FormType > >(
           op.getStorage(), op.getMinLevel(), op.getMaxLevel() );
-      cell_smoother->init( op );
+      FormType form;
+      cell_smoother->init( form );
       eigen_smoother->setCellSmoother( cell_smoother );
 
       return eigen_smoother;

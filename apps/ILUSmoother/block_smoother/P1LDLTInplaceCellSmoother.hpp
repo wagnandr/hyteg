@@ -74,21 +74,21 @@ void apply_boundary_corrections( uint_t x, uint_t y, uint_t z, uint_t N, std::ma
    {
       stencil[stencilDirection::VERTEX_NW]  = 0;
       stencil[stencilDirection::VERTEX_W]   = 0;
-      stencil[stencilDirection::VERTEX_TW] = 0;
-      stencil[stencilDirection::VERTEX_BNW]  = 0;
+      stencil[stencilDirection::VERTEX_TW]  = 0;
+      stencil[stencilDirection::VERTEX_BNW] = 0;
    }
    if ( x + y + z == N - 2 )
    {
-      stencil[stencilDirection::VERTEX_E]  = 0;
-      stencil[stencilDirection::VERTEX_N]  = 0;
-      stencil[stencilDirection::VERTEX_TC] = 0;
+      stencil[stencilDirection::VERTEX_E]   = 0;
+      stencil[stencilDirection::VERTEX_N]   = 0;
+      stencil[stencilDirection::VERTEX_TC]  = 0;
       stencil[stencilDirection::VERTEX_TSE] = 0;
    }
    if ( y == 1 )
    {
-      stencil[stencilDirection::VERTEX_S]  = 0;
-      stencil[stencilDirection::VERTEX_SE] = 0;
-      stencil[stencilDirection::VERTEX_TS] = 0;
+      stencil[stencilDirection::VERTEX_S]   = 0;
+      stencil[stencilDirection::VERTEX_SE]  = 0;
+      stencil[stencilDirection::VERTEX_TS]  = 0;
       stencil[stencilDirection::VERTEX_TSE] = 0;
    }
    if ( z == 1 )
@@ -98,6 +98,15 @@ void apply_boundary_corrections( uint_t x, uint_t y, uint_t z, uint_t N, std::ma
       stencil[stencilDirection::VERTEX_BN]  = 0;
       stencil[stencilDirection::VERTEX_BNW] = 0;
    }
+}
+
+bool on_cell_boundary( uint_t x, uint_t y, uint_t z, uint_t size_boundary, uint_t num_dof_on_edge )
+{
+   const bool on_east_boundary     = x < size_boundary;
+   const bool on_south_boundary    = y < size_boundary;
+   const bool on_bottom_boundary   = z < size_boundary;
+   const bool on_diagonal_boundary = x + y + z > num_dof_on_edge - 1 - size_boundary;
+   return on_east_boundary || on_south_boundary || on_bottom_boundary || on_diagonal_boundary;
 }
 
 template < typename FormType, typename FactorizationCallback >
@@ -133,7 +142,6 @@ void factorize_matrix( FormType& form, uint_t level, Cell& cell, const Factoriza
       {
          for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
          {
-
             auto a_stencil = P1Elements::P1Elements3D::calculateStencilInMacroCellForm( { x, y, z }, cell, level, form );
 
             apply_boundary_corrections( x, y, z, N_edge, a_stencil );
@@ -190,24 +198,24 @@ void factorize_matrix( FormType& form, uint_t level, Cell& cell, const Factoriza
             beta_c -= beta_w * beta_w * beta[SD::VERTEX_C][fidx( x - 1, y )];
 
             // write back into beta:
-            beta[SD::VERTEX_BC][fidx(x, y)] = beta_bc;
-            beta[SD::VERTEX_S][fidx(x, y)] = beta_s;
-            beta[SD::VERTEX_BNW][fidx(x, y)] = beta_bnw;
-            beta[SD::VERTEX_BE][fidx(x, y)] = beta_be;
-            beta[SD::VERTEX_W][fidx(x, y)] = beta_w;
-            beta[SD::VERTEX_BN][fidx(x, y)] = beta_bn;
-            beta[SD::VERTEX_SE][fidx(x, y)] = beta_se;
-            beta[SD::VERTEX_C][fidx(x, y)] = beta_c;
+            beta[SD::VERTEX_BC][fidx( x, y )]  = beta_bc;
+            beta[SD::VERTEX_S][fidx( x, y )]   = beta_s;
+            beta[SD::VERTEX_BNW][fidx( x, y )] = beta_bnw;
+            beta[SD::VERTEX_BE][fidx( x, y )]  = beta_be;
+            beta[SD::VERTEX_W][fidx( x, y )]   = beta_w;
+            beta[SD::VERTEX_BN][fidx( x, y )]  = beta_bn;
+            beta[SD::VERTEX_SE][fidx( x, y )]  = beta_se;
+            beta[SD::VERTEX_C][fidx( x, y )]   = beta_c;
 
             // copy into stencil:
-            l_stencil[SD::VERTEX_BC] = beta_bc;
-            l_stencil[SD::VERTEX_S] = beta_s;
+            l_stencil[SD::VERTEX_BC]  = beta_bc;
+            l_stencil[SD::VERTEX_S]   = beta_s;
             l_stencil[SD::VERTEX_BNW] = beta_bnw;
-            l_stencil[SD::VERTEX_BE] = beta_be;
-            l_stencil[SD::VERTEX_W] = beta_w;
-            l_stencil[SD::VERTEX_BN] = beta_bn;
-            l_stencil[SD::VERTEX_SE] = beta_se;
-            l_stencil[SD::VERTEX_C] = beta_c;
+            l_stencil[SD::VERTEX_BE]  = beta_be;
+            l_stencil[SD::VERTEX_W]   = beta_w;
+            l_stencil[SD::VERTEX_BN]  = beta_bn;
+            l_stencil[SD::VERTEX_SE]  = beta_se;
+            l_stencil[SD::VERTEX_C]   = beta_c;
 
             cb( x, y, z, l_stencil );
          } // end x loop
@@ -309,12 +317,84 @@ void apply_substitutions( LStencilProvider&   get_l_stencil,
             u[cidx( x, y, z, SD::VERTEX_C )] -= l_stencil[opposite( SD::VERTEX_TC )] * u[cidx( x, y, z, SD::VERTEX_TC )];
 
             // TW
-            get_l_stencil( x-1, y, z + 1, l_stencil );
+            get_l_stencil( x - 1, y, z + 1, l_stencil );
             u[cidx( x, y, z, SD::VERTEX_C )] -= l_stencil[opposite( SD::VERTEX_TW )] * u[cidx( x, y, z, SD::VERTEX_TW )];
          }
       }
    }
 }
+
+class LDLTBoundaryStencils
+{
+ public:
+   using SD = stencilDirection;
+
+   using StencilType = std::map< SD, real_t >;
+
+   void add( uint_t x, uint_t y, uint_t z, StencilType& stencil )
+   {
+      if ( stencils_.count( x ) == 0 )
+         stencils_[x] = {};
+      if ( stencils_[x].count( y ) == 0 )
+         stencils_[x][y] = {};
+      if ( stencils_[x][y].count( z ) != 0 )
+         WALBERLA_LOG_WARNING( "boundary stencils gets added twice" )
+      stencils_[x][y][z] = stencil;
+   }
+
+   StencilType& get( uint_t x, uint_t y, uint_t z )
+   {
+      if ( stencils_.count( x ) == 0 || stencils_[x].count( y ) == 0 )
+         WALBERLA_ABORT( "stencil not found" );
+      return stencils_[x][y][z];
+   }
+
+ private:
+   // x, y, z, direction
+   std::map< uint_t, std::map< uint_t, std::map< uint_t, std::map< SD, real_t > > > > stencils_;
+};
+
+class LDLTHierarchicalBoundaryStencils
+{
+ public:
+   LDLTHierarchicalBoundaryStencils( uint_t minLevel, uint_t maxLevel )
+   : minLevel_( minLevel )
+   , maxLevel_( maxLevel )
+   , collections( maxLevel - minLevel + 1 )
+   {}
+
+   LDLTBoundaryStencils& getLevel( uint_t level )
+   {
+      WALBERLA_CHECK_LESS_EQUAL( minLevel_, level );
+      WALBERLA_CHECK_GREATER_EQUAL( maxLevel_, level );
+      return collections[level - minLevel_];
+   }
+
+ private:
+   uint_t minLevel_;
+   uint_t maxLevel_;
+
+   std::vector< LDLTBoundaryStencils > collections;
+};
+
+class LDLTHierarchicalBoundaryStencilsMemoryDataHandling
+: public hyteg::OnlyInitializeDataHandling< LDLTHierarchicalBoundaryStencils, Cell >
+{
+ public:
+   explicit LDLTHierarchicalBoundaryStencilsMemoryDataHandling( const uint_t& minLevel, const uint_t& maxLevel )
+   : minLevel_( minLevel )
+   , maxLevel_( maxLevel )
+   {}
+
+   std::shared_ptr< LDLTHierarchicalBoundaryStencils > initialize( const Cell* const ) const override
+   {
+      return std::make_shared< LDLTHierarchicalBoundaryStencils >( minLevel_, maxLevel_ );
+   }
+
+ private:
+   uint_t minLevel_;
+   uint_t maxLevel_;
+};
 
 } // namespace dim3
 } // namespace p1
@@ -333,13 +413,27 @@ class P1LDLTInplaceCellSmoother : public CellSmoother< OperatorType >
    , flag_( hyteg::Inner | hyteg::NeumannBoundary | hyteg::FreeslipBoundary )
    , minLevel_( minLevel )
    , maxLevel_( maxLevel )
-   {}
+   {
+      auto boundaryDataHandling =
+          std::make_shared< ldlt::p1::dim3::LDLTHierarchicalBoundaryStencilsMemoryDataHandling >( minLevel_, maxLevel_ );
+      storage_->addCellData( boundaryID_, boundaryDataHandling, "P1LDLTInplaceCellSmootherBoundary" );
+   }
 
    using SD = stencilDirection;
 
    static constexpr auto cindex = vertexdof::macrocell::indexFromVertex;
 
-   void init( const OperatorType& ) {}
+   void init( FormType& form )
+   {
+      for ( auto& it : storage_->getCells() )
+      {
+         Cell& cell = *it.second;
+         for ( uint_t level = minLevel_; level <= maxLevel_; ++level )
+         {
+            factorize_matrix_inplace( level, cell, form );
+         }
+      }
+   }
 
    void smooth( const OperatorType&                   A,
                 uint_t                                level,
@@ -354,40 +448,46 @@ class P1LDLTInplaceCellSmoother : public CellSmoother< OperatorType >
       u.assign( { 1., 1. }, { tmp2_, u }, level, flag_ );
    }
 
-   using InplaceMatrix = std::map< SD, std::vector< real_t > >;
-
-   InplaceMatrix factorize_matrix_inplace( const OperatorType&, uint_t level, Cell& cell )
+   void factorize_matrix_inplace( uint_t level, Cell& cell, FormType& form )
    {
-      // we assume that the logical coordinates of the _inner_ layer ranges from 1 to N:
-      const auto N_cell = levelinfo::num_microvertices_per_cell( level );
+      auto& boundaryData = cell.getData( boundaryID_ )->getLevel( level );
 
-      InplaceMatrix l_matrix;
+      // initialize boundary data:
+      std::map< SD, real_t > unit_stencil;
       for ( auto d : ldlt::p1::dim3::lowerDirections )
+         unit_stencil[d] = 0;
+      unit_stencil[SD::VERTEX_C] = 1;
+
+      const uint_t N_edge = levelinfo::num_microvertices_per_edge( level );
+
+      for ( uint_t z = 0; z <= N_edge - 1; z += 1 )
       {
-         l_matrix[d] = std::vector< real_t >( N_cell, 0 );
+         for ( uint_t y = 0; y <= N_edge - 1 - z; y += 1 )
+         {
+            for ( uint_t x = 0; x <= N_edge - 1 - z - y; x += 1 )
+            {
+               if ( ldlt::p1::dim3::on_cell_boundary( x, y, z, 1, N_edge ) )
+                  boundaryData.add( x, y, z, unit_stencil );
+            }
+         }
       }
-      l_matrix[SD::VERTEX_C] = std::vector< real_t >( N_cell, 1 );
 
       ldlt::p1::dim3::factorize_matrix(
-          form_, level, cell, [&l_matrix, level]( uint_t x, uint_t y, uint_t z, std::map< SD, real_t >& stencil ) {
-             for ( auto d : ldlt::p1::dim3::lowerDirectionsAndCenter )
-                l_matrix[d][cindex( level, x, y, z, SD::VERTEX_C )] = stencil[d];
+          form, level, cell, [&boundaryData, level]( uint_t x, uint_t y, uint_t z, std::map< SD, real_t >& stencil ) {
+             boundaryData.add( x, y, z, stencil );
           } );
-
-      return l_matrix;
    }
 
-   void smooth_apply( const OperatorType&                   A,
+   void smooth_apply( const OperatorType&,
                       uint_t                                level,
                       Cell&                                 cell,
                       const typename OperatorType::srcType& u,
                       const typename OperatorType::dstType& b )
    {
-      auto L = factorize_matrix_inplace( A, level, cell );
+      auto& boundaryData = cell.getData( boundaryID_ )->getLevel( level );
 
-      auto stencil_provider = [&L, level]( uint_t x, uint_t y, uint_t z, std::map< SD, real_t >& stencil ) {
-         for ( auto d : ldlt::p1::dim3::lowerDirectionsAndCenter )
-            stencil[d] = L[d][cindex( level, x, y, z, SD::VERTEX_C )];
+      auto stencil_provider = [&boundaryData, level]( uint_t x, uint_t y, uint_t z, std::map< SD, real_t >& stencil ) {
+         stencil = boundaryData.get( x, y, z );
       };
 
       ldlt::p1::dim3::apply_substitutions( stencil_provider, level, cell, u, b );
@@ -414,6 +514,8 @@ class P1LDLTInplaceCellSmoother : public CellSmoother< OperatorType >
 
    uint_t minLevel_;
    uint_t maxLevel_;
+
+   PrimitiveDataID< ldlt::p1::dim3::LDLTHierarchicalBoundaryStencils, Cell > boundaryID_;
 };
 
 } // namespace hyteg
