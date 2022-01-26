@@ -1,0 +1,36 @@
+Parameters
+{
+  minLevel 2;
+  maxLevel 6;
+  max_outer_iter 20;
+  max_coarse_iter 100;
+  mg_tolerance 1e-14;
+  coarse_tolerance 1e-16;
+  vtkOutput true;
+  csvOutput true;
+
+  asymptotic_convergence_start_iter 3;
+
+  num_smoothing_steps 2;
+
+  // replaces the zero initial guess with something random
+  randomInitialGuess true;
+  powermethod true;
+
+  // which solution: zero, sines?
+  solution_type sines;
+
+  domain tetrahedron;
+
+  tet_permutation 0;
+
+  // use PCG with mg preconditioner
+  usePCG false;
+
+  // which smoother: hyteg_gs, eigen_ilu, inplace_ldlt
+  smoother_type inplace_ldlt;
+  // smoother_type eigen_ilu;
+
+  // damping factor of the smoother
+  relax 1.;
+}

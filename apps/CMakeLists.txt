@@ -89,5 +89,7 @@ endif()
 add_subdirectory(GKBTestProblemGeneration)
 add_subdirectory(SphericalHarmonics)
 add_subdirectory(Surrogates)
+add_subdirectory(ILUSmoother)
 
 add_subdirectory(blockOperators)
+
