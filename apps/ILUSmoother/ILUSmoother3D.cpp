@@ -107,9 +107,6 @@ std::shared_ptr< hyteg::Solver< OperatorType > > createSmoother3D( walberla::con
           op.getStorage(), op.getMinLevel(), op.getMaxLevel() );
 
       // cell ilu
-      P1Function< int > numerator( "numerator", op.getStorage(), op.getMinLevel(), op.getMaxLevel() );
-      for ( size_t level = op.getMinLevel(); level <= op.getMaxLevel(); level += 1 )
-         numerator.enumerate( level );
       auto cell_smoother = std::make_shared< hyteg::P1LDLTInplaceCellSmoother< OperatorType, FormType > >(
           op.getStorage(), op.getMinLevel(), op.getMaxLevel() );
       FormType form;
@@ -117,6 +114,24 @@ std::shared_ptr< hyteg::Solver< OperatorType > > createSmoother3D( walberla::con
       eigen_smoother->setCellSmoother( cell_smoother );
 
       return eigen_smoother;
+   }
+   else if ( smoother_type == "surrogate_ldlt" )
+   {
+      auto eigen_smoother = std::make_shared< hyteg::HybridPrimitiveSmoother< OperatorType > >(
+          op.getStorage(), op.getMinLevel(), op.getMaxLevel() );
+
+      const uint_t degree = parameters.getParameter< uint_t >( "surrogate_degree" );
+      const uint_t skipLevel = parameters.getParameter< uint_t >( "surrogate_skip_level" );
+
+      // cell ilu
+      auto cell_smoother = std::make_shared< hyteg::P1LDLTSurrogateCellSmoother< OperatorType, FormType > >(
+          op.getStorage(), op.getMinLevel(), op.getMaxLevel(), degree );
+      FormType form;
+      cell_smoother->init( form, skipLevel );
+      eigen_smoother->setCellSmoother( cell_smoother );
+
+      return eigen_smoother;
+
    }
    WALBERLA_ABORT( "smoother type " + smoother_type + " is unknown." );
 }

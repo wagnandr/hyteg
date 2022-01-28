@@ -28,8 +28,11 @@ Parameters
   usePCG false;
 
   // which smoother: hyteg_gs, eigen_ilu, inplace_ldlt
-  smoother_type inplace_ldlt;
-  // smoother_type eigen_ilu;
+  // smoother_type inplace_ldlt;
+  smoother_type surrogate_ldlt;
+
+  surrogate_degree 12;
+  surrogate_skip_level 12;
 
   // damping factor of the smoother
   relax 1.;

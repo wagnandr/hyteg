@@ -125,6 +125,64 @@ class LSQPInterpolator
    Eigen::Matrix<real_t, Eigen::Dynamic, Eigen::Dynamic> rhs;
 };
 
+template < typename Basis >
+class VariableLSQPInterpolator3D
+{
+ public:
+   void addInterpolationPoint( const Point3D& x, real_t value )
+   {
+      points.push_back( x );
+      values.push_back( value );
+   }
+
+   void interpolate( Polynomial3D< Basis >& poly )
+   {
+      if ( points.size() != values.size() )
+         WALBERLA_ABORT( "point and value sizes are different" );
+
+      // build system of equations:
+      auto num_coefficients = Polynomial2D< Basis >::getNumCoefficients( poly.getDegree() );
+      if ( num_coefficients > points.size() )
+         WALBERLA_LOG_WARNING( "Polynomial interpolation may have poor quality since there are less interpolation points "
+                               "than coefficients. Please try to increase the interpolation level to fix this." );
+
+      // if no data is present, we make sure that the polynomials is unusable.
+      if ( points.empty() )
+      {
+         for ( uint_t i = 0; i < num_coefficients; ++i )
+         {
+            poly.setCoefficient( i, NAN );
+         }
+         return;
+      }
+
+      Eigen::Matrix< real_t, Eigen::Dynamic, Eigen::Dynamic > A( values.size(), num_coefficients );
+      Eigen::Matrix< real_t, Eigen::Dynamic, Eigen::Dynamic > rhs( values.size(), 1 );
+      for ( int i = 0; i < values.size(); ++i )
+      {
+         auto x     = points.at( i );
+         auto value = values.at( i );
+         for ( int k = 0; k < num_coefficients; ++k )
+         {
+            A( i, k ) = Basis::eval( k, x );
+         }
+         rhs( i ) = value;
+      }
+
+      Eigen::Matrix< real_t, Eigen::Dynamic, Eigen::Dynamic > coeffs =
+          A.bdcSvd( Eigen::ComputeThinU | Eigen::ComputeThinV ).solve( rhs );
+
+      for ( uint_t i = 0; i < num_coefficients; ++i )
+      {
+         poly.setCoefficient( i, coeffs( i ) );
+      }
+   }
+
+ private:
+   std::vector< Point3D > points;
+   std::vector< double >  values;
+};
+
 template<typename Basis, LSQPType Type>
 class LSQPInterpolator3D
 {
