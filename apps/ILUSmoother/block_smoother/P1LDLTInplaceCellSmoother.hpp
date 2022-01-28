@@ -406,7 +406,7 @@ class LDLTPolynomials
    : degree_( degree )
    {
       for ( auto d : lowerDirectionsAndCenter )
-         polynomials_.emplace(d, degree );
+         polynomials_.emplace( d, degree );
    }
 
    inline Polynomial& getPolynomial( stencilDirection direction ) { return polynomials_[direction]; }
@@ -493,25 +493,24 @@ class Interpolators
 };
 
 template < uint_t degree, typename FunctionType >
-void apply_surrogate_substitutions_impl(
-    LDLTBoundaryStencils&   boundaryStencils,
-    LDLTPolynomials&    polynomials,
-    uint_t              level,
-    Cell&               cell,
-    const FunctionType& u_function,
-    const FunctionType& b_function )
+void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
+                                         LDLTPolynomials&      polynomials,
+                                         uint_t                level,
+                                         Cell&                 cell,
+                                         const FunctionType&   u_function,
+                                         const FunctionType&   b_function )
 {
    const auto cidx = [level]( uint_t x, uint_t y, uint_t z, SD dir ) {
-     return vertexdof::macrocell::indexFromVertex( level, x, y, z, dir );
+      return vertexdof::macrocell::indexFromVertex( level, x, y, z, dir );
    };
 
    auto get_l_stencil = [&boundaryStencils, level]( uint_t x, uint_t y, uint_t z, std::map< SD, real_t >& stencil ) {
-     stencil = boundaryStencils.get( x, y, z );
+      stencil = boundaryStencils.get( x, y, z );
    };
 
    const auto N_edge = levelinfo::num_microvertices_per_edge( level );
 
-   real_t h          = 1. / static_cast< real_t >( levelinfo::num_microedges_per_edge( level ) );
+   real_t h = 1. / static_cast< real_t >( levelinfo::num_microedges_per_edge( level ) );
 
    std::map< SD, real_t > l_stencil;
 
@@ -519,35 +518,113 @@ void apply_surrogate_substitutions_impl(
    auto u = cell.getData( u_function.getCellDataID() )->getPointer( level );
    auto b = cell.getData( b_function.getCellDataID() )->getPointer( level );
 
+   const size_t boundarySize = 3;
+
+   auto apply_forward_substitution =
+       [cidx]( uint_t x, uint_t y, uint_t z, std::map< SD, real_t >& stencil, real_t const* const b_dat, real_t* u_dat ) {
+          u_dat[cidx( x, y, z, SD::VERTEX_C )] = b_dat[cidx( x, y, z, SD::VERTEX_C )];
+          for ( auto d : lowerDirections )
+             u_dat[cidx( x, y, z, SD::VERTEX_C )] -= stencil[d] * u_dat[cidx( x, y, z, d )];
+       };
+
+   auto conv = [](uint_t x, uint_t y, uint_t z) { return 100000 * z + 1000 * y + x; };
+   std::set< uint_t > contains;
+
+   auto apply_diagonal_scaling =
+       [cidx, &conv, &contains]( uint_t x, uint_t y, uint_t z, std::map< SD, real_t >& stencil, real_t const* const, real_t* u_dat ) {
+          u_dat[cidx( x, y, z, SD::VERTEX_C )] /= stencil[SD::VERTEX_C];
+          if ( contains.find(conv(x,y,z)) != contains.end() )
+             WALBERLA_LOG_INFO(x << " " << y << " " << z << " twice!");
+          contains.insert(conv(x,y,z));
+       };
+
+   // ---------------------
    // forward substitution:
-   for ( uint_t z = 1; z <= N_edge - 2; z += 1 )
+   // ---------------------
+   // boundary z bottom:
+   for ( uint_t z = 1; z <= N_edge - 2 ; z += 1 )
    {
       for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
       {
          for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
          {
             get_l_stencil( x, y, z, l_stencil );
-            u[cidx( x, y, z, SD::VERTEX_C )] = b[cidx( x, y, z, SD::VERTEX_C )];
-            for ( auto d : lowerDirections )
-            {
-               u[cidx( x, y, z, SD::VERTEX_C )] -= l_stencil[d] * u[cidx( x, y, z, d )];
-            }
+            apply_forward_substitution( x, y, z, l_stencil, b, u );
          }
       }
    }
 
+   // ---------
    // diagonal:
-   for ( uint_t z = 1; z <= N_edge - 2; z += 1 )
+   // ---------
+   // z bottom:
+   for ( uint_t z = 1; z < 1 + boundarySize; z += 1 )
    {
       for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
       {
          for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
          {
             get_l_stencil( x, y, z, l_stencil );
-            //print_stencil(x,y,z,l_stencil);
-            u[cidx( x, y, z, SD::VERTEX_C )] /= l_stencil[SD::VERTEX_C];
-            // Point3D p( { h * static_cast< real_t >( x ), h * static_cast< real_t >( y ), h * static_cast< real_t >( z ) } );
-            // WALBERLA_LOG_INFO( x << " " << y << " " << z << " " << std::abs(polynomials.getPolynomial(SD::VERTEX_C).eval(p) - l_stencil[SD::VERTEX_C]) / l_stencil[SD::VERTEX_C]);
+            apply_diagonal_scaling( x, y, z, l_stencil, b, u );
+         }
+      }
+   }
+
+   // z inner:
+   for ( uint_t z = 1 + boundarySize; z <= N_edge - 2 - boundarySize; z += 1 )
+   {
+      // y south:
+      for ( uint_t y = 1; y < 1 + boundarySize; y += 1 )
+      {
+         for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
+         {
+            get_l_stencil( x, y, z, l_stencil );
+            apply_diagonal_scaling( x, y, z, l_stencil, b, u );
+         }
+      }
+
+      // y inner:
+      for ( uint_t y = 1 + boundarySize; y <= N_edge - 2 - boundarySize - z; y += 1 )
+      {
+         for ( uint_t x = 1; x < 1 + boundarySize; x += 1 )
+         {
+            get_l_stencil( x, y, z, l_stencil );
+            apply_diagonal_scaling( x, y, z, l_stencil, b, u );
+         }
+
+         for ( uint_t x = 1 + boundarySize; x <= N_edge - 2 - boundarySize - z - y; x += 1 )
+         {
+            get_l_stencil( x, y, z, l_stencil );
+            apply_diagonal_scaling( x, y, z, l_stencil, b, u );
+         }
+
+         for ( uint_t x = std::max( 1 + boundarySize, N_edge - 1 - boundarySize - z - y); x <= N_edge - 2 - z - y; x += 1 )
+         {
+            get_l_stencil( x, y, z, l_stencil );
+            apply_diagonal_scaling( x, y, z, l_stencil, b, u );
+         }
+      }
+
+      // y north:
+      for ( uint_t y = std::max( 1 + boundarySize, N_edge - 1 - boundarySize - z); y <= N_edge - 2 - z; y += 1 )
+      {
+         for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
+         {
+            get_l_stencil( x, y, z, l_stencil );
+            apply_diagonal_scaling( x, y, z, l_stencil, b, u );
+         }
+      }
+   }
+
+   // z bottom:
+   for ( uint_t z = std::max( 1 + boundarySize, N_edge - 1 - boundarySize); z <= N_edge - 2; z += 1 )
+   {
+      for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
+      {
+         for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
+         {
+            get_l_stencil( x, y, z, l_stencil );
+            apply_diagonal_scaling( x, y, z, l_stencil, b, u );
          }
       }
    }
@@ -592,24 +669,24 @@ void apply_surrogate_substitutions_impl(
 }
 
 template < uint_t minDegree, uint_t maxDegree, typename FunctionType >
-void apply_surrogate_substitutions(
-    LDLTBoundaryStencils&   stencils,
-    LDLTPolynomials&    polynomials,
-    uint_t              level,
-    uint_t              degree,
-    Cell&               cell,
-    const FunctionType& u_function,
-    const FunctionType& b_function )
+void apply_surrogate_substitutions( LDLTBoundaryStencils& stencils,
+                                    LDLTPolynomials&      polynomials,
+                                    uint_t                level,
+                                    uint_t                degree,
+                                    Cell&                 cell,
+                                    const FunctionType&   u_function,
+                                    const FunctionType&   b_function )
 {
    if ( minDegree == degree )
    {
-      apply_surrogate_substitutions_impl< minDegree >( stencils , polynomials, level, cell, u_function, b_function );
+      apply_surrogate_substitutions_impl< minDegree >( stencils, polynomials, level, cell, u_function, b_function );
    }
    else
    {
       if constexpr ( minDegree < maxDegree )
       {
-         apply_surrogate_substitutions< minDegree + 1, maxDegree >( stencils, polynomials, level, degree, cell, u_function, b_function );
+         apply_surrogate_substitutions< minDegree + 1, maxDegree >(
+             stencils, polynomials, level, degree, cell, u_function, b_function );
       }
       else
       {
@@ -736,10 +813,10 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
                       const typename OperatorType::srcType& u,
                       const typename OperatorType::dstType& b )
    {
-      auto& polynomialData  = cell.getData( polynomialsID_ )->getLevel( level );
-      auto& boundaryData = cell.getData( boundaryID_ )->getLevel( level );
+      auto& polynomialData = cell.getData( polynomialsID_ )->getLevel( level );
+      auto& boundaryData   = cell.getData( boundaryID_ )->getLevel( level );
 
-      ldlt::p1::dim3::apply_surrogate_substitutions<0, 12>( boundaryData, polynomialData, level, polyDegree_, cell, u, b );
+      ldlt::p1::dim3::apply_surrogate_substitutions< 0, 12 >( boundaryData, polynomialData, level, polyDegree_, cell, u, b );
    }
 
    void smooth_backwards( const OperatorType&                   A,
