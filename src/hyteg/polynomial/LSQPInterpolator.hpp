@@ -141,7 +141,7 @@ class VariableLSQPInterpolator3D
          WALBERLA_ABORT( "point and value sizes are different" );
 
       // build system of equations:
-      auto num_coefficients = Polynomial2D< Basis >::getNumCoefficients( poly.getDegree() );
+      auto num_coefficients = Polynomial3D< Basis >::getNumCoefficients( poly.getDegree() );
       if ( num_coefficients > points.size() )
          WALBERLA_LOG_WARNING( "Polynomial interpolation may have poor quality since there are less interpolation points "
                                "than coefficients. Please try to increase the interpolation level to fix this." );

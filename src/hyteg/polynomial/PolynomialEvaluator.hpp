@@ -318,13 +318,13 @@ class Polynomial3DEvaluator{
   typedef Polynomial2D<MonomialBasis2D> Polynomial2;
   typedef Polynomial3D<MonomialBasis3D> Polynomial3;
 
-  Polynomial3DEvaluator(uint_t degree)
-    : degree_(degree)
-    , poly_z_(degree)
-    , poly_yz_(degree)
-    , deltas(degree+1)
-  {
-  }
+  Polynomial3DEvaluator( uint_t degree )
+  : poly_( nullptr )
+  , degree_( degree )
+  , poly_z_( degree )
+  , poly_yz_( degree )
+  , deltas( degree + 1 )
+  {}
 
   Polynomial3DEvaluator(const Polynomial3& poly)
     : Polynomial3DEvaluator(poly.getDegree())
