@@ -411,12 +411,14 @@ class LDLTPolynomials
 
    inline Polynomial& getPolynomial( stencilDirection direction ) { return polynomials_[direction]; }
 
+   inline const Polynomial& operator[]( stencilDirection direction ) const { return polynomials_[direction]; }
+
    [[nodiscard]] inline uint_t getDegree() const { return degree_; }
 
  private:
    uint_t degree_;
 
-   std::map< SD, Polynomial3D< MonomialBasis3D > > polynomials_;
+   mutable std::map< SD, Polynomial3D< MonomialBasis3D > > polynomials_;
 };
 
 class LDLTHierachicalPolynomials
@@ -490,6 +492,50 @@ class Interpolators
 
  private:
    std::map< SD, Interpolator3D > interpolators;
+};
+
+template < size_t num_directions >
+class PolyStencil {
+ public:
+   PolyStencil( uint_t degree, const std::array<SD, num_directions>& directions )
+   : directions_(directions)
+   {
+      for (uint_t i = 0; i < num_directions; i += 1)
+         polynomials_.emplace_back(degree);
+   }
+
+
+   template< typename PolyListType >
+   void setPolynomial(PolyListType& polylist){
+      for (uint_t i = 0; i < directions_.size(); i+=1)
+         polynomials_[i].setPolynomial(polylist[directions_[i]]);
+   }
+
+   void setY( real_t y ){
+      for (uint_t i = 0; i < directions_.size(); i+=1)
+         polynomials_[i].setY(y);
+   }
+
+   void setZ( real_t z ){
+      for (uint_t i = 0; i < directions_.size(); i+=1)
+         polynomials_[i].setZ(z);
+   }
+
+   void setStartX( real_t x, real_t h, std::map< SD, real_t > & stencil)
+   {
+      for (uint_t i = 0; i < directions_.size(); i+=1)
+         stencil[directions_[i]] = polynomials_[i].setStartX(x, h);
+   }
+
+   void incrementEval( std::map< SD, real_t > & stencil ) {
+      for (uint_t i = 0; i < directions_.size(); i+=1)
+         stencil[directions_[i]] = polynomials_[i].incrementEval();
+   };
+
+ private:
+   std::array< SD, num_directions > directions_;
+
+   std::vector< Polynomial3DEvaluator > polynomials_;
 };
 
 template < uint_t degree, typename FunctionType >
@@ -570,6 +616,12 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
       }
    }
 
+   Polynomial3DEvaluator evaluator(polynomials.getDegree());
+   evaluator.setPolynomial(polynomials.getPolynomial(SD::VERTEX_C));
+
+   PolyStencil<1> poly_stencil( polynomials.getDegree(), { SD::VERTEX_C } );
+   poly_stencil.setPolynomial(polynomials);
+
    // z inner:
    for ( uint_t z = 1 + boundarySize; z <= N_edge - 2 - boundarySize; z += 1 )
    {
@@ -583,21 +635,41 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
          }
       }
 
+      poly_stencil.setZ( h * static_cast< real_t > (z) );
+
       // y inner:
       for ( uint_t y = 1 + boundarySize; y <= N_edge - 2 - boundarySize - z; y += 1 )
       {
+         // x west:
          for ( uint_t x = 1; x < 1 + boundarySize; x += 1 )
          {
             get_l_stencil( x, y, z, l_stencil );
             apply_diagonal_scaling( x, y, z, l_stencil, b, u );
          }
 
+         poly_stencil.setY( h * static_cast< real_t > (y) );
+         poly_stencil.setStartX( h * static_cast< real_t > (boundarySize), h, l_stencil);
+
+         // x inner:
          for ( uint_t x = 1 + boundarySize; x <= N_edge - 2 - boundarySize - z - y; x += 1 )
          {
             get_l_stencil( x, y, z, l_stencil );
+            poly_stencil.incrementEval(l_stencil);
+
+            real_t c_stencil_2 = polynomials.getPolynomial(SD::VERTEX_C).eval(Point3D({
+                                      h * static_cast< real_t > (x),
+                                      h * static_cast< real_t > (y),
+                                      h * static_cast< real_t > (z)
+                                  }));
+
+            WALBERLA_LOG_INFO( std::abs(l_stencil[SD::VERTEX_C] - c_stencil_2) );
+            if (std::abs(l_stencil[SD::VERTEX_C] - c_stencil_2) > 1e-12)
+               WALBERLA_ABORT("NO!" << std::abs(l_stencil[SD::VERTEX_C] - c_stencil_2));
+
             apply_diagonal_scaling( x, y, z, l_stencil, b, u );
          }
 
+         // x east:
          for ( uint_t x = std::max( 1 + boundarySize, N_edge - 1 - boundarySize - z - y); x <= N_edge - 2 - z - y; x += 1 )
          {
             get_l_stencil( x, y, z, l_stencil );
