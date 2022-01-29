@@ -502,7 +502,12 @@ class PolyStencil
    : directions_( directions )
    {
       for ( uint_t i = 0; i < num_directions; i += 1 )
+      {
          polynomials_.emplace_back( degree );
+         offsetsX_.push_back( 0 );
+         offsetsY_.push_back( 0 );
+         offsetsZ_.push_back( 0 );
+      }
    }
 
    template < typename PolyListType >
@@ -515,19 +520,19 @@ class PolyStencil
    void setY( real_t y )
    {
       for ( uint_t i = 0; i < directions_.size(); i += 1 )
-         polynomials_[i].setY( y );
+         polynomials_[i].setY( y + offsetsY_[i] );
    }
 
    void setZ( real_t z )
    {
       for ( uint_t i = 0; i < directions_.size(); i += 1 )
-         polynomials_[i].setZ( z );
+         polynomials_[i].setZ( z + offsetsZ_[i] );
    }
 
    void setStartX( real_t x, real_t h, std::map< SD, real_t >& stencil )
    {
       for ( uint_t i = 0; i < directions_.size(); i += 1 )
-         stencil[directions_[i]] = polynomials_[i].setStartX( x, h );
+         stencil[directions_[i]] = polynomials_[i].setStartX( x + offsetsX_[i], h );
    }
 
    void incrementEval( std::map< SD, real_t >& stencil )
@@ -536,10 +541,25 @@ class PolyStencil
          stencil[directions_[i]] = polynomials_[i].incrementEval();
    };
 
+   void setOffset( SD d, real_t x, real_t y, real_t z )
+   {
+      auto it = std::find( directions_.begin(), directions_.end(), d );
+      if ( it == directions_.end() )
+         WALBERLA_ABORT( "direction not defined" );
+      auto idx       = it - directions_.begin();
+      offsetsX_[idx] = x;
+      offsetsY_[idx] = y;
+      offsetsZ_[idx] = z;
+   }
+
  private:
    std::array< SD, num_directions > directions_;
 
    std::vector< Polynomial3DEvaluator > polynomials_;
+
+   std::vector< real_t > offsetsX_;
+   std::vector< real_t > offsetsY_;
+   std::vector< real_t > offsetsZ_;
 };
 
 template < uint_t degree, typename FunctionType >
@@ -568,7 +588,7 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
    auto u = cell.getData( u_function.getCellDataID() )->getPointer( level );
    auto b = cell.getData( b_function.getCellDataID() )->getPointer( level );
 
-   const size_t boundarySize = 3;
+   const size_t boundarySize = 1;
 
    auto apply_forward_substitution =
        [cidx]( uint_t x, uint_t y, uint_t z, std::map< SD, real_t >& stencil, real_t const* const b_dat, real_t* u_dat ) {
@@ -577,7 +597,7 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
              u_dat[cidx( x, y, z, SD::VERTEX_C )] -= stencil[d] * u_dat[cidx( x, y, z, d )];
        };
 
-   auto               conv = []( uint_t x, uint_t y, uint_t z ) { return 100000 * z + 1000 * y + x; };
+   auto               conv = []( uint_t x, uint_t y, uint_t z ) { return 1000000 * z + 1000 * y + x; };
    std::set< uint_t > contains;
 
    auto apply_diagonal_scaling =
@@ -601,13 +621,8 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
 
    auto apply_backward_substitution =
        [cidx]( uint_t x, uint_t y, uint_t z, std::map< SD, real_t >& stencil, real_t const* const, real_t* u_dat ) {
-          u_dat[cidx( x, y, z, SD::VERTEX_C )] -= stencil[opposite( SD::VERTEX_E )] * u_dat[cidx( x, y, z, SD::VERTEX_E )];
-          u_dat[cidx( x, y, z, SD::VERTEX_C )] -= stencil[opposite( SD::VERTEX_N )] * u_dat[cidx( x, y, z, SD::VERTEX_N )];
-          u_dat[cidx( x, y, z, SD::VERTEX_C )] -= stencil[opposite( SD::VERTEX_NW )] * u_dat[cidx( x, y, z, SD::VERTEX_NW )];
-          u_dat[cidx( x, y, z, SD::VERTEX_C )] -= stencil[opposite( SD::VERTEX_TSE )] * u_dat[cidx( x, y, z, SD::VERTEX_TSE )];
-          u_dat[cidx( x, y, z, SD::VERTEX_C )] -= stencil[opposite( SD::VERTEX_TS )] * u_dat[cidx( x, y, z, SD::VERTEX_TS )];
-          u_dat[cidx( x, y, z, SD::VERTEX_C )] -= stencil[opposite( SD::VERTEX_TC )] * u_dat[cidx( x, y, z, SD::VERTEX_TC )];
-          u_dat[cidx( x, y, z, SD::VERTEX_C )] -= stencil[opposite( SD::VERTEX_TW )] * u_dat[cidx( x, y, z, SD::VERTEX_TW )];
+          for ( auto d : upperDirections )
+             u_dat[cidx( x, y, z, SD::VERTEX_C )] -= stencil[opposite( d )] * u_dat[cidx( x, y, z, d )];
        };
 
    // ---------------------
@@ -727,7 +742,70 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
    }
 
    // backward substitution:
-   for ( uint_t z = N_edge - 2; z >= 1; z -= 1 )
+   // z top
+   for ( uint_t z = N_edge - 2; z > N_edge - 2 - boundarySize; z -= 1 )
+   {
+      for ( uint_t y = N_edge - 2 - z; y >= 1; y -= 1 )
+      {
+         for ( uint_t x = N_edge - 2 - z - y; x >= 1; x -= 1 )
+         {
+            get_lt_stencil( x, y, z, l_stencil );
+            apply_backward_substitution( x, y, z, l_stencil, b, u );
+         }
+      }
+   }
+
+   // z inner
+   for ( uint_t z = N_edge - 2 - boundarySize; z >= 1 + boundarySize; z -= 1 )
+   {
+      // y north:
+      for ( uint_t y = N_edge - 2 - z; y > N_edge - 2 - boundarySize - z; y -= 1 )
+      {
+         for ( uint_t x = N_edge - 2 - z - y; x >= 1; x -= 1 )
+         {
+            get_lt_stencil( x, y, z, l_stencil );
+            apply_backward_substitution( x, y, z, l_stencil, b, u );
+         }
+      }
+
+      // y inner:
+      for ( uint_t y = N_edge - 2 - boundarySize - z; y >= 1 + boundarySize; y -= 1 )
+      {
+         // x east:
+         for ( uint_t x = N_edge - 2 - z - y; x > N_edge - 2 - boundarySize - z - y; x -= 1 )
+         {
+            get_lt_stencil( x, y, z, l_stencil );
+            apply_backward_substitution( x, y, z, l_stencil, b, u );
+         }
+
+         // x inner:
+         for ( uint_t x = N_edge - 2 - boundarySize - z - y; x >= 1 + boundarySize; x -= 1 )
+         {
+            get_lt_stencil( x, y, z, l_stencil );
+            apply_backward_substitution( x, y, z, l_stencil, b, u );
+         }
+
+         // x west:
+         for ( uint_t x = std::min( boundarySize, N_edge - 2 - boundarySize - z - y ); x >= 1; x -= 1 )
+         {
+            get_lt_stencil( x, y, z, l_stencil );
+            apply_backward_substitution( x, y, z, l_stencil, b, u );
+         }
+      }
+
+      // y south:
+      for ( uint_t y = std::min( boundarySize, N_edge - 2 - boundarySize - z ); y >= 1; y -= 1 )
+      {
+         for ( uint_t x = N_edge - 2 - z - y; x >= 1; x -= 1 )
+         {
+            get_lt_stencil( x, y, z, l_stencil );
+            apply_backward_substitution( x, y, z, l_stencil, b, u );
+         }
+      }
+   }
+
+   // z bottom
+   for ( uint_t z = std::min( boundarySize, N_edge - 3 - boundarySize ); z >= 1; z -= 1 )
    {
       for ( uint_t y = N_edge - 2 - z; y >= 1; y -= 1 )
       {
