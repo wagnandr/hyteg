@@ -595,10 +595,11 @@ Point3D to_point( uint_t x, uint_t y, uint_t z, real_t h )
    return p;
 }
 
-template < uint_t degree, typename FunctionType >
-void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
+template < typename FunctionType >
+void apply_surrogate_substitutions( LDLTBoundaryStencils& boundaryStencils,
                                          LDLTPolynomials&      polynomials,
                                          uint_t                level,
+                                         uint_t                degree,
                                          Cell&                 cell,
                                          const FunctionType&   u_function,
                                          const FunctionType&   b_function )
@@ -687,8 +688,8 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
             for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
             {
                poly_stencil_lower.incrementEval( l_stencil );
-               get_l_stencil( x, y, z, l_stencil );
-               // apply_boundary_corrections(x, y, z, N_edge, l_stencil);
+               // get_l_stencil( x, y, z, l_stencil );
+               apply_boundary_corrections(x, y, z, N_edge, l_stencil);
                apply_forward_substitution( x, y, z, l_stencil, b, u );
             }
          }
@@ -706,8 +707,8 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
             for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
             {
                poly_stencil_lower.incrementEval( l_stencil );
-               get_l_stencil( x, y, z, l_stencil );
-               // apply_boundary_corrections(x, y, z, N_edge, l_stencil);
+               // get_l_stencil( x, y, z, l_stencil );
+               apply_boundary_corrections(x, y, z, N_edge, l_stencil);
                apply_forward_substitution( x, y, z, l_stencil, b, u );
             }
          }
@@ -721,8 +722,8 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
             for ( uint_t x = 1; x < 1 + boundarySize; x += 1 )
             {
                poly_stencil_lower.incrementEval( l_stencil );
-               get_l_stencil( x, y, z, l_stencil );
-               // apply_boundary_corrections(x, y, z, N_edge, l_stencil);
+               // get_l_stencil( x, y, z, l_stencil );
+               apply_boundary_corrections(x, y, z, N_edge, l_stencil);
                apply_forward_substitution( x, y, z, l_stencil, b, u );
             }
 
@@ -730,18 +731,6 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
             for ( uint_t x = 1 + boundarySize; x <= N_edge - 2 - boundarySize - z - y; x += 1 )
             {
                poly_stencil_lower.incrementEval( l_stencil );
-               /*
-               get_l_stencil(x, y, z, l_stencil_test);
-               for ( auto d : { SD::VERTEX_S } )
-                  if ( std::abs( l_stencil[d] - l_stencil_test[d] ) > 1e-10 )
-                  WALBERLA_LOG_INFO( "forward s>" << x << " " << y << " " << z << " " << l_stencil[d] << " " << l_stencil_test[d] );
-               for ( auto d : { SD::VERTEX_W } )
-                  if ( std::abs( l_stencil[d] - l_stencil_test[d] ) > 1e-10 )
-                  WALBERLA_LOG_INFO( "forward w>" << x << " " << y << " " << z << " " << l_stencil[d] << " " << l_stencil_test[d] );
-               for ( auto d : { SD::VERTEX_BC } )
-                  if ( std::abs( l_stencil[d] - l_stencil_test[d] ) > 1e-10 )
-                  WALBERLA_LOG_INFO( "forward bc>" << x << " " << y << " " << z << " " << l_stencil[d] << " " << l_stencil_test[d] );
-               */
                apply_forward_substitution( x, y, z, l_stencil, b, u );
             }
 
@@ -749,8 +738,8 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
             for ( uint_t x = std::max( 1 + boundarySize, N_edge - 1 - boundarySize - z - y ); x <= N_edge - 2 - z - y; x += 1 )
             {
                poly_stencil_lower.incrementEval( l_stencil );
-               // apply_boundary_corrections(x, y, z, N_edge, l_stencil);
-               get_l_stencil( x, y, z, l_stencil );
+               apply_boundary_corrections(x, y, z, N_edge, l_stencil);
+               // get_l_stencil( x, y, z, l_stencil );
                apply_forward_substitution( x, y, z, l_stencil, b, u );
             }
          }
@@ -763,8 +752,8 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
             for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
             {
                poly_stencil_lower.incrementEval( l_stencil );
-               // apply_boundary_corrections(x, y, z, N_edge, l_stencil);
-               get_l_stencil( x, y, z, l_stencil );
+               apply_boundary_corrections(x, y, z, N_edge, l_stencil);
+               // get_l_stencil( x, y, z, l_stencil );
                apply_forward_substitution( x, y, z, l_stencil, b, u );
             }
          }
@@ -781,8 +770,8 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
             for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
             {
                poly_stencil_lower.incrementEval( l_stencil );
-               // apply_boundary_corrections(x, y, z, N_edge, l_stencil);
-               get_l_stencil( x, y, z, l_stencil );
+               apply_boundary_corrections(x, y, z, N_edge, l_stencil);
+               // get_l_stencil( x, y, z, l_stencil );
                apply_forward_substitution( x, y, z, l_stencil, b, u );
             }
          }
@@ -807,7 +796,7 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
             for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
             {
                poly_stencil_diagonal.incrementEval( l_stencil );
-               get_l_stencil( x, y, z, l_stencil );
+               // get_l_stencil( x, y, z, l_stencil );
                apply_diagonal_scaling( x, y, z, l_stencil, b, u );
             }
          }
@@ -825,7 +814,7 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
             for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
             {
                poly_stencil_diagonal.incrementEval( l_stencil );
-               get_l_stencil( x, y, z, l_stencil );
+               // get_l_stencil( x, y, z, l_stencil );
                // WALBERLA_LOG_INFO( x << " " << y <<  " " << z << " " << l_stencil[SD::VERTEX_C] << " " << l_stencil_test[SD::VERTEX_C] );
                apply_diagonal_scaling( x, y, z, l_stencil, b, u );
             }
@@ -840,7 +829,7 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
             for ( uint_t x = 1; x < 1 + boundarySize; x += 1 )
             {
                poly_stencil_diagonal.incrementEval( l_stencil );
-               get_l_stencil( x, y, z, l_stencil );
+               // get_l_stencil( x, y, z, l_stencil );
                apply_diagonal_scaling( x, y, z, l_stencil, b, u );
             }
 
@@ -855,7 +844,7 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
             for ( uint_t x = std::max( 1 + boundarySize, N_edge - 1 - boundarySize - z - y ); x <= N_edge - 2 - z - y; x += 1 )
             {
                poly_stencil_diagonal.incrementEval( l_stencil );
-               get_l_stencil( x, y, z, l_stencil );
+               // get_l_stencil( x, y, z, l_stencil );
                apply_diagonal_scaling( x, y, z, l_stencil, b, u );
             }
          }
@@ -868,7 +857,7 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
             for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
             {
                poly_stencil_diagonal.incrementEval( l_stencil );
-               get_l_stencil( x, y, z, l_stencil );
+               // get_l_stencil( x, y, z, l_stencil );
                apply_diagonal_scaling( x, y, z, l_stencil, b, u );
             }
          }
@@ -885,7 +874,7 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
             for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
             {
                poly_stencil_diagonal.incrementEval( l_stencil );
-               get_l_stencil( x, y, z, l_stencil );
+               // get_l_stencil( x, y, z, l_stencil );
                apply_diagonal_scaling( x, y, z, l_stencil, b, u );
             }
          }
@@ -1021,33 +1010,6 @@ void apply_surrogate_substitutions_impl( LDLTBoundaryStencils& boundaryStencils,
    }
 }
 
-template < uint_t minDegree, uint_t maxDegree, typename FunctionType >
-void apply_surrogate_substitutions( LDLTBoundaryStencils& stencils,
-                                    LDLTPolynomials&      polynomials,
-                                    uint_t                level,
-                                    uint_t                degree,
-                                    Cell&                 cell,
-                                    const FunctionType&   u_function,
-                                    const FunctionType&   b_function )
-{
-   if ( minDegree == degree )
-   {
-      apply_surrogate_substitutions_impl< minDegree >( stencils, polynomials, level, cell, u_function, b_function );
-   }
-   else
-   {
-      if constexpr ( minDegree < maxDegree )
-      {
-         apply_surrogate_substitutions< minDegree + 1, maxDegree >(
-             stencils, polynomials, level, degree, cell, u_function, b_function );
-      }
-      else
-      {
-         WALBERLA_ABORT( "degree " << degree << " is larger than the maximum degree " << maxDegree );
-      }
-   }
-}
-
 } // namespace dim3
 } // namespace p1
 } // namespace ldlt
@@ -1169,7 +1131,7 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
       auto& polynomialData = cell.getData( polynomialsID_ )->getLevel( level );
       auto& boundaryData   = cell.getData( boundaryID_ )->getLevel( level );
 
-      ldlt::p1::dim3::apply_surrogate_substitutions< 0, 12 >( boundaryData, polynomialData, level, polyDegree_, cell, u, b );
+      ldlt::p1::dim3::apply_surrogate_substitutions( boundaryData, polynomialData, level, polyDegree_, cell, u, b );
    }
 
    void smooth_backwards( const OperatorType&                   A,
