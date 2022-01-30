@@ -68,6 +68,26 @@ void print_stencil( uint_t x, uint_t y, uint_t z, std::map< SD, real_t >& stenci
       WALBERLA_LOG_INFO( "x " << x << " y " << y << " z " << z << " " << stencilDirectionToStr[d] << " " << stencil[d] );
 }
 
+bool on_west_boundary(uint_t x, uint_t y, uint_t z, uint_t N)
+{
+   return x == 1;
+}
+
+bool on_diagonal_boundary(uint_t x, uint_t y, uint_t z, uint_t N)
+{
+   return x + y + z == N - 2;
+}
+
+bool on_south_boundary(uint x, uint_t y, uint_t z, uint_t N)
+{
+   return y == 1;
+}
+
+bool on_bottom_boundary(uint x, uint_t y, uint_t z, uint_t N)
+{
+   return z == 1;
+}
+
 void apply_boundary_corrections( uint_t x, uint_t y, uint_t z, uint_t N, std::map< SD, real_t >& stencil )
 {
    if ( x == 1 )
@@ -537,6 +557,11 @@ class Interpolators
    {
       for ( auto d : lowerDirectionsAndCenter )
          interpolators[d].addInterpolationPoint( p, stencil.at( d ) );
+   }
+
+   void addValue( const Point3D& p, SD d, real_t v )
+   {
+      interpolators[d].addInterpolationPoint( p, v );
    }
 
    void interpolate( LDLTPolynomials& poly )
@@ -1173,10 +1198,10 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
       real_t H          = 1. / static_cast< real_t >( levelinfo::num_microedges_per_edge( skipLevel ) );
       auto   skipLength = static_cast< uint_t >( std::max( 1., std::round( H / h ) ) );
 
-      auto is_interpolation_point = [skipLength, this]( uint_t x, uint_t y, uint_t z ) {
-         auto x_b = x - 1;
-         auto y_b = y - 1;
-         auto z_b = z - 1;
+      auto is_interpolation_point = [skipLength, this]( uint_t x, uint_t y, uint_t z, uint_t offx, uint_t offy, uint_t offz ) {
+         auto x_b = x - 1 - offx;
+         auto y_b = y - 1 - offy;
+         auto z_b = z - 1 - offz;
          return ( x_b % skipLength == 0 ) && ( y_b % skipLength == 0 ) && ( z_b % skipLength == 0 );
       };
 
@@ -1204,12 +1229,32 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
 
       auto factorization = [&boundaryData, level, N_edge, is_interpolation_point, h, &interpolators](
                                uint_t x, uint_t y, uint_t z, std::map< SD, real_t >& stencil ) {
-         boundaryData.add( x, y, z, stencil );
-         if ( is_interpolation_point( x, y, z ) )
-         {
-            Point3D p( { h * static_cast< real_t >( x ), h * static_cast< real_t >( y ), h * static_cast< real_t >( z ) } );
-            interpolators.addStencil( p, stencil );
-         }
+         // boundaryData.add( x, y, z, stencil );
+         // if ( is_interpolation_point( x, y, z ) )
+         // {
+         //    Point3D p( { h * static_cast< real_t >( x ), h * static_cast< real_t >( y ), h * static_cast< real_t >( z ) } );
+         //    interpolators.addStencil( p, stencil );
+         // }
+
+        Point3D p( { h * static_cast< real_t >( x ), h * static_cast< real_t >( y ), h * static_cast< real_t >( z ) } );
+
+         if ( is_interpolation_point(x, y, z, 0, 0, 0) )
+            interpolators.addValue(p, SD::VERTEX_C, stencil[SD::VERTEX_C]);
+         if ( (!ldlt::p1::dim3::on_west_boundary(x, y, z, N_edge)) && is_interpolation_point(x, y, z, 1, 0, 0) )
+            interpolators.addValue(p, SD::VERTEX_W, stencil[SD::VERTEX_W]);
+        if ( (!ldlt::p1::dim3::on_south_boundary(x, y, z, N_edge)) && is_interpolation_point(x, y, z, 0, 1, 0) )
+           interpolators.addValue(p, SD::VERTEX_S, stencil[SD::VERTEX_S]);
+        if ( (!ldlt::p1::dim3::on_south_boundary(x, y, z, N_edge)) && is_interpolation_point(x, y, z, 0, 1, 0) )
+           interpolators.addValue(p, SD::VERTEX_SE, stencil[SD::VERTEX_SE]);
+        if ( (!ldlt::p1::dim3::on_west_boundary(x, y, z, N_edge)) && (!ldlt::p1::dim3::on_bottom_boundary(x, y, z, N_edge)) && is_interpolation_point(x, y, z, 1, 0, 1) )
+           interpolators.addValue(p, SD::VERTEX_BNW, stencil[SD::VERTEX_BNW]);
+        if ( (!ldlt::p1::dim3::on_bottom_boundary(x, y, z, N_edge)) && is_interpolation_point(x, y, z, 0, 0, 1) )
+           interpolators.addValue(p, SD::VERTEX_BN, stencil[SD::VERTEX_BN]);
+        if ( (!ldlt::p1::dim3::on_bottom_boundary(x, y, z, N_edge)) && is_interpolation_point(x, y, z, 0, 0, 1) )
+           interpolators.addValue(p, SD::VERTEX_BC, stencil[SD::VERTEX_BC]);
+        if ( (!ldlt::p1::dim3::on_bottom_boundary(x, y, z, N_edge)) && is_interpolation_point(x, y, z, 0, 0, 1) )
+           interpolators.addValue(p, SD::VERTEX_BE, stencil[SD::VERTEX_BE]);
+
       };
 
       ldlt::p1::dim3::factorize_matrix( form, level, cell, factorization );
