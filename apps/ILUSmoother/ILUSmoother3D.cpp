@@ -23,14 +23,15 @@
 #include <unordered_map>
 #include <utility>
 
-#include "core/Format.hpp"
-#include "core/math/Random.h"
 #include "core/DataTypes.h"
 #include "core/Environment.h"
+#include "core/Format.hpp"
 #include "core/math/Constants.h"
+#include "core/math/Random.h"
 #include "core/mpi/MPIManager.h"
 
 #include "hyteg/dataexport/VTKOutput.hpp"
+#include "hyteg/elementwiseoperators/P1ElementwiseOperator.hpp"
 #include "hyteg/gridtransferoperators/P1toP1LinearProlongation.hpp"
 #include "hyteg/gridtransferoperators/P1toP1LinearRestriction.hpp"
 #include "hyteg/p1functionspace/P1ConstantOperator.hpp"
@@ -39,8 +40,9 @@
 #include "hyteg/primitivestorage/PrimitiveStorage.hpp"
 #include "hyteg/primitivestorage/SetupPrimitiveStorage.hpp"
 #include "hyteg/solvers/CGSolver.hpp"
-#include "hyteg/solvers/SORSmoother.hpp"
+#include "hyteg/solvers/GaussSeidelSmoother.hpp"
 #include "hyteg/solvers/GeometricMultigridSolver.hpp"
+#include "hyteg/solvers/SORSmoother.hpp"
 
 #include "block_smoother/HybridPrimitiveSmoother.hpp"
 #include "block_smoother/P1LDLTInplaceCellSmoother.hpp"
@@ -62,7 +64,7 @@ std::shared_ptr< SetupPrimitiveStorage > createDomain( walberla::Config::BlockHa
 
       const double top_x = 0.0;
       const double top_y = 0.0;
-      const double top_z = 0.1;
+      const double top_z = parameters.getParameter< real_t >( "tetrahedron_height" );
 
       const Point3D p0( { 0, 0, 0 } );
       const Point3D p1( { 1.0, 0, 0 } );
@@ -70,8 +72,8 @@ std::shared_ptr< SetupPrimitiveStorage > createDomain( walberla::Config::BlockHa
       const Point3D p3( { top_x, top_y, top_z } );
 
       // we permutate the vertices to study performance for different orientations:
-      const uint_t permutationNumber = parameters.getParameter< uint_t >( "tet_permutation" );
-      std::vector< uint_t > order { 0, 1, 2, 3 };
+      const uint_t          permutationNumber = parameters.getParameter< uint_t >( "tetrahedron_permutation" );
+      std::vector< uint_t > order{ 0, 1, 2, 3 };
       for ( uint_t i = 0; i < permutationNumber; ++i )
          std::next_permutation( std::begin( order ), std::end( order ) );
 
@@ -96,8 +98,8 @@ std::shared_ptr< SetupPrimitiveStorage > createDomain( walberla::Config::BlockHa
 }
 
 template < typename OperatorType, typename FormType >
-std::shared_ptr< hyteg::Solver< OperatorType > > createSmoother3D( walberla::config::Config::BlockHandle& parameters,
-                                                                   OperatorType&                          op )
+std::shared_ptr< hyteg::Solver< OperatorType > >
+    createSmoother3D( walberla::config::Config::BlockHandle& parameters, OperatorType& op, FormType& form )
 {
    const std::string smoother_type = parameters.getParameter< std::string >( "smoother_type" );
 
@@ -108,9 +110,8 @@ std::shared_ptr< hyteg::Solver< OperatorType > > createSmoother3D( walberla::con
 
       // cell ilu
       auto cell_smoother = std::make_shared< hyteg::P1LDLTInplaceCellSmoother< OperatorType, FormType > >(
-          op.getStorage(), op.getMinLevel(), op.getMaxLevel() );
-      FormType form;
-      cell_smoother->init( form );
+          op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form );
+      cell_smoother->init();
       eigen_smoother->setCellSmoother( cell_smoother );
 
       return eigen_smoother;
@@ -120,18 +121,20 @@ std::shared_ptr< hyteg::Solver< OperatorType > > createSmoother3D( walberla::con
       auto eigen_smoother = std::make_shared< hyteg::HybridPrimitiveSmoother< OperatorType > >(
           op.getStorage(), op.getMinLevel(), op.getMaxLevel() );
 
-      const uint_t degree = parameters.getParameter< uint_t >( "surrogate_degree" );
+      const uint_t degree    = parameters.getParameter< uint_t >( "surrogate_degree" );
       const uint_t skipLevel = parameters.getParameter< uint_t >( "surrogate_skip_level" );
 
       // cell ilu
       auto cell_smoother = std::make_shared< hyteg::P1LDLTSurrogateCellSmoother< OperatorType, FormType > >(
-          op.getStorage(), op.getMinLevel(), op.getMaxLevel(), degree );
-      FormType form;
-      cell_smoother->init( form, skipLevel );
+          op.getStorage(), op.getMinLevel(), op.getMaxLevel(), degree, form );
+      cell_smoother->init( skipLevel );
       eigen_smoother->setCellSmoother( cell_smoother );
 
       return eigen_smoother;
-
+   }
+   else if ( smoother_type == "gs" )
+   {
+      return std::make_shared< hyteg::GaussSeidelSmoother< OperatorType > >();
    }
    WALBERLA_ABORT( "smoother type " + smoother_type + " is unknown." );
 }
@@ -225,13 +228,21 @@ int main( int argc, char** argv )
                      All ^ DirichletBoundary );
    }
 
-   // using OperatorType = hyteg::P1ElementwiseLaplaceOperator;
    using OperatorType = hyteg::P1ConstantLaplaceOperator;
-   using FormType = hyteg::forms::p1_diffusion_blending_q1;
-
+   using FormType     = hyteg::forms::p1_diffusion_blending_q1;
+   FormType     form;
    OperatorType laplaceOperator( storage, minLevel, maxLevel );
 
-   std::shared_ptr< hyteg::Solver< OperatorType > > smoother = createSmoother3D< OperatorType, FormType > ( parameters, laplaceOperator );
+   // using OperatorType = P1ElementwiseBlendingDivKGradOperator;
+   // using FormType     = forms::p1_div_k_grad_blending_q3;
+   // auto         kappa2d = []( const Point3D& p ) { return 1.; };
+   //auto         kappa3d = []( const Point3D& p ) { return 1 + p[0] * p[0] * p[0] + p[1] + 10. * p[2] * p[2] * p[2]; };
+   // auto         kappa3d = []( const Point3D& p ) { return 1 + p[0] * p[0] * p[0]; };
+   // FormType     form( kappa3d, kappa2d );
+   // OperatorType laplaceOperator( storage, minLevel, maxLevel, form );
+
+   std::shared_ptr< hyteg::Solver< OperatorType > > smoother =
+       createSmoother3D< OperatorType, FormType >( parameters, laplaceOperator, form );
 
    auto coarseGridSolver =
        std::make_shared< hyteg::CGSolver< OperatorType > >( storage, minLevel, minLevel, max_coarse_iter, coarse_tolerance );

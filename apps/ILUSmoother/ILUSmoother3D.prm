@@ -21,8 +21,8 @@ Parameters
   solution_type sines;
 
   domain tetrahedron;
-
-  tet_permutation 0;
+  tetrahedron_height 0.25;
+  tetrahedron_permutation 0;
 
   // use PCG with mg preconditioner
   usePCG false;
