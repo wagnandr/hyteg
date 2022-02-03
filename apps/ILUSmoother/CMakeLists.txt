@@ -10,6 +10,10 @@ waLBerla_add_executable( NAME ILUSmoother3D
         FILES ILUSmoother3D.cpp
         DEPENDS hyteg core)
 
+waLBerla_add_executable( NAME CompareSurrogateILUStencils
+        FILES CompareSurrogateILUStencils.cpp
+        DEPENDS hyteg core)
+
 waLBerla_link_files_to_builddir( *.prm )
 waLBerla_link_files_to_builddir( *.py )
 waLBerla_link_files_to_builddir( *.m )

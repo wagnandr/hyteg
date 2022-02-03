@@ -740,27 +740,27 @@ void apply_surrogate_substitutions( LDLTBoundaryStencils& boundaryStencils,
           if ( ldlt::p1::dim3::on_cell_boundary( x - 1, y + 1, z, 2, N_edge ) )
              stencil[SD::VERTEX_SE] = boundaryStencils.get( x - 1, y + 1, z )[SD::VERTEX_SE];
           else
-            stencil[SD::VERTEX_SE] = polynomials.getPolynomial(SD::VERTEX_SE).eval(to_point( x - 1, y + 1, z, h ));
+             stencil[SD::VERTEX_SE] = polynomials.getPolynomial( SD::VERTEX_SE ).eval( to_point( x - 1, y + 1, z, h ) );
 
           if ( ldlt::p1::dim3::on_cell_boundary( x + 1, y - 1, z + 1, 2, N_edge ) )
              stencil[SD::VERTEX_BNW] = boundaryStencils.get( x + 1, y - 1, z + 1 )[SD::VERTEX_BNW];
           else
-             stencil[SD::VERTEX_BNW] = polynomials.getPolynomial(SD::VERTEX_BNW).eval(to_point( x + 1, y - 1, z + 1, h ));
+             stencil[SD::VERTEX_BNW] = polynomials.getPolynomial( SD::VERTEX_BNW ).eval( to_point( x + 1, y - 1, z + 1, h ) );
 
           if ( ldlt::p1::dim3::on_cell_boundary( x, y - 1, z + 1, 2, N_edge ) )
              stencil[SD::VERTEX_BN] = boundaryStencils.get( x, y - 1, z + 1 )[SD::VERTEX_BN];
           else
-             stencil[SD::VERTEX_BN] = polynomials.getPolynomial(SD::VERTEX_BN).eval(to_point(x, y - 1, z + 1, h));
+             stencil[SD::VERTEX_BN] = polynomials.getPolynomial( SD::VERTEX_BN ).eval( to_point( x, y - 1, z + 1, h ) );
 
           if ( ldlt::p1::dim3::on_cell_boundary( x, y, z + 1, 2, N_edge ) )
              stencil[SD::VERTEX_BC] = boundaryStencils.get( x, y, z + 1 )[SD::VERTEX_BC];
           else
-             stencil[SD::VERTEX_BC] = polynomials.getPolynomial(SD::VERTEX_BC).eval(to_point(x, y, z + 1, h));
+             stencil[SD::VERTEX_BC] = polynomials.getPolynomial( SD::VERTEX_BC ).eval( to_point( x, y, z + 1, h ) );
 
           if ( ldlt::p1::dim3::on_cell_boundary( x - 1, y, z + 1, 2, N_edge ) )
              stencil[SD::VERTEX_BE] = boundaryStencils.get( x - 1, y, z + 1 )[SD::VERTEX_BE];
           else
-             stencil[SD::VERTEX_BE] = polynomials.getPolynomial(SD::VERTEX_BE).eval(to_point(x - 1, y, z + 1, h));
+             stencil[SD::VERTEX_BE] = polynomials.getPolynomial( SD::VERTEX_BE ).eval( to_point( x - 1, y, z + 1, h ) );
        };
 
    /*
@@ -1257,35 +1257,28 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
 
       auto factorization = [&boundaryData, level, N_edge, is_interpolation_point, h, &interpolators](
                                uint_t x, uint_t y, uint_t z, std::map< SD, real_t >& stencil ) {
-         if ( useBoundaryCorrection )
-         {
-            Point3D p( { h * static_cast< real_t >( x ), h * static_cast< real_t >( y ), h * static_cast< real_t >( z ) } );
+         Point3D p( { h * static_cast< real_t >( x ), h * static_cast< real_t >( y ), h * static_cast< real_t >( z ) } );
 
-            if ( is_interpolation_point( x, y, z, 0, 0, 0 ) )
-               interpolators.addValue( p, SD::VERTEX_C, stencil[SD::VERTEX_C] );
-            if ( ( !ldlt::p1::dim3::on_west_boundary( x, y, z, N_edge ) ) && is_interpolation_point( x, y, z, 1, 0, 0 ) )
-               interpolators.addValue( p, SD::VERTEX_W, stencil[SD::VERTEX_W] );
-            if ( ( !ldlt::p1::dim3::on_south_boundary( x, y, z, N_edge ) ) && is_interpolation_point( x, y, z, 0, 1, 0 ) )
-               interpolators.addValue( p, SD::VERTEX_S, stencil[SD::VERTEX_S] );
-            if ( ( !ldlt::p1::dim3::on_south_boundary( x, y, z, N_edge ) ) && is_interpolation_point( x, y, z, 0, 1, 0 ) )
-               interpolators.addValue( p, SD::VERTEX_SE, stencil[SD::VERTEX_SE] );
-            if ( ( !ldlt::p1::dim3::on_west_boundary( x, y, z, N_edge ) ) &&
-                 ( !ldlt::p1::dim3::on_bottom_boundary( x, y, z, N_edge ) ) && is_interpolation_point( x, y, z, 1, 0, 1 ) )
-               interpolators.addValue( p, SD::VERTEX_BNW, stencil[SD::VERTEX_BNW] );
-            if ( ( !ldlt::p1::dim3::on_bottom_boundary( x, y, z, N_edge ) ) && is_interpolation_point( x, y, z, 0, 0, 1 ) )
-               interpolators.addValue( p, SD::VERTEX_BN, stencil[SD::VERTEX_BN] );
-            if ( ( !ldlt::p1::dim3::on_bottom_boundary( x, y, z, N_edge ) ) && is_interpolation_point( x, y, z, 0, 0, 1 ) )
-               interpolators.addValue( p, SD::VERTEX_BC, stencil[SD::VERTEX_BC] );
-            if ( ( !ldlt::p1::dim3::on_bottom_boundary( x, y, z, N_edge ) ) && is_interpolation_point( x, y, z, 0, 0, 1 ) )
-               interpolators.addValue( p, SD::VERTEX_BE, stencil[SD::VERTEX_BE] );
-         }
-         else
+         if ( is_interpolation_point( x, y, z, 0, 0, 0 ) )
+            interpolators.addValue( p, SD::VERTEX_C, stencil[SD::VERTEX_C] );
+         if ( ( !ldlt::p1::dim3::on_west_boundary( x, y, z, N_edge ) ) && is_interpolation_point( x, y, z, 1, 0, 0 ) )
+            interpolators.addValue( p, SD::VERTEX_W, stencil[SD::VERTEX_W] );
+         if ( ( !ldlt::p1::dim3::on_south_boundary( x, y, z, N_edge ) ) && is_interpolation_point( x, y, z, 0, 1, 0 ) )
+            interpolators.addValue( p, SD::VERTEX_S, stencil[SD::VERTEX_S] );
+         if ( ( !ldlt::p1::dim3::on_south_boundary( x, y, z, N_edge ) ) && is_interpolation_point( x, y, z, 0, 1, 0 ) )
+            interpolators.addValue( p, SD::VERTEX_SE, stencil[SD::VERTEX_SE] );
+         if ( ( !ldlt::p1::dim3::on_west_boundary( x, y, z, N_edge ) ) &&
+              ( !ldlt::p1::dim3::on_bottom_boundary( x, y, z, N_edge ) ) && is_interpolation_point( x, y, z, 1, 0, 1 ) )
+            interpolators.addValue( p, SD::VERTEX_BNW, stencil[SD::VERTEX_BNW] );
+         if ( ( !ldlt::p1::dim3::on_bottom_boundary( x, y, z, N_edge ) ) && is_interpolation_point( x, y, z, 0, 0, 1 ) )
+            interpolators.addValue( p, SD::VERTEX_BN, stencil[SD::VERTEX_BN] );
+         if ( ( !ldlt::p1::dim3::on_bottom_boundary( x, y, z, N_edge ) ) && is_interpolation_point( x, y, z, 0, 0, 1 ) )
+            interpolators.addValue( p, SD::VERTEX_BC, stencil[SD::VERTEX_BC] );
+         if ( ( !ldlt::p1::dim3::on_bottom_boundary( x, y, z, N_edge ) ) && is_interpolation_point( x, y, z, 0, 0, 1 ) )
+            interpolators.addValue( p, SD::VERTEX_BE, stencil[SD::VERTEX_BE] );
+
+         if ( !useBoundaryCorrection )
          {
-            if ( !ldlt::p1::dim3::on_cell_boundary( x, y, z, 2, N_edge ) && is_interpolation_point( x, y, z, 1, 1, 1 ) )
-            {
-               Point3D p( { h * static_cast< real_t >( x ), h * static_cast< real_t >( y ), h * static_cast< real_t >( z ) } );
-               interpolators.addStencil( p, stencil );
-            }
             if ( ldlt::p1::dim3::on_cell_boundary( x, y, z, 2, N_edge ) )
             {
                boundaryData.add( x, y, z, stencil );
@@ -1318,6 +1311,41 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
                           const typename OperatorType::dstType& b ) override
    {
       smooth( A, level, cell, x, b );
+   }
+
+   void interpolate_stencil_direction( uint_t level, SD direction, const FunctionType& u )
+   {
+      const auto N_edge = levelinfo::num_microvertices_per_edge( level );
+
+      const real_t h = 1. / static_cast< real_t >( N_edge );
+
+      constexpr auto cidx = vertexdof::macrocell::indexFromVertex;
+
+      std::map< SD, real_t > l_stencil;
+
+      for ( auto it : storage_->getCells() )
+      {
+         Cell& cell           = *it.second;
+         auto& boundaryData   = cell.getData( boundaryID_ )->getLevel( level );
+         auto& polynomialData = cell.getData( polynomialsID_ )->getLevel( level );
+         auto& polynomial     = polynomialData.getPolynomial( direction );
+         auto  u_data         = cell.getData( u.getCellDataID() )->getPointer( level );
+
+         for ( uint_t z = 0; z <= N_edge - 1; z += 1 )
+         {
+            for ( uint_t y = 0; y <= N_edge - 1 - z; y += 1 )
+            {
+               for ( uint_t x = 0; x <= N_edge - 1 - z - y; x += 1 )
+               {
+                  real_t polynomialValue = polynomial.eval( ldlt::p1::dim3::to_point( x, y, z, h ) );
+                  u_data[cidx( level, x, y, z, SD::VERTEX_C )] =
+                      ldlt::p1::dim3::apply_boundary_corrections_to_scalar( x, y, z, N_edge, direction, polynomialValue );
+                  if ( !useBoundaryCorrection && ldlt::p1::dim3::on_cell_boundary( x, y, z, 2, N_edge ) )
+                     u_data[cidx( level, x, y, z, SD::VERTEX_C )] = boundaryData.get( x, y, z )[direction];
+               }
+            }
+         }
+      }
    }
 
  private:
@@ -1441,6 +1469,33 @@ class P1LDLTInplaceCellSmoother : public CellSmoother< OperatorType >
                           const typename OperatorType::dstType& b ) override
    {
       smooth( A, level, cell, x, b );
+   }
+
+   void interpolate_stencil_direction( uint_t level, SD direction, const FunctionType& u )
+   {
+      const auto N_edge = levelinfo::num_microvertices_per_edge( level );
+
+      constexpr auto cidx = vertexdof::macrocell::indexFromVertex;
+
+      std::map< SD, real_t > l_stencil;
+
+      for ( auto it : storage_->getCells() )
+      {
+         Cell& cell         = *it.second;
+         auto& boundaryData = cell.getData( boundaryID_ )->getLevel( level );
+         auto  u_data       = cell.getData( u.getCellDataID() )->getPointer( level );
+
+         for ( uint_t z = 0; z <= N_edge - 1; z += 1 )
+         {
+            for ( uint_t y = 0; y <= N_edge - 1 - z; y += 1 )
+            {
+               for ( uint_t x = 0; x <= N_edge - 1 - z - y; x += 1 )
+               {
+                  u_data[cidx( level, x, y, z, SD::VERTEX_C )] = boundaryData.get( x, y, z )[direction];
+               }
+            }
+         }
+      }
    }
 
  private:

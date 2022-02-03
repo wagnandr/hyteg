@@ -1,0 +1,14 @@
+Parameters
+{
+  level 6;
+  vtk_output true;
+
+  domain tetrahedron;
+  tetrahedron_height 0.1;
+  tetrahedron_permutation 0;
+
+  filename ilu_stencil_deg6;
+
+  degree 6;
+  skip_level 12;
+}

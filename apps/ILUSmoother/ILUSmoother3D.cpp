@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Andreas Wagner, Daniel Drzisga
+ * Copyright (c) 2022 Andreas Wagner.
  *
  * This file is part of HyTeG
  * (see https://i10git.cs.fau.de/hyteg/hyteg).
@@ -47,55 +47,14 @@
 #include "block_smoother/HybridPrimitiveSmoother.hpp"
 #include "block_smoother/P1LDLTInplaceCellSmoother.hpp"
 
+#include "utils/create_domain.hpp"
+
 using walberla::real_t;
 using walberla::uint_c;
 using walberla::uint_t;
 using walberla::math::pi;
 
 using namespace hyteg;
-
-std::shared_ptr< SetupPrimitiveStorage > createDomain( walberla::Config::BlockHandle& parameters )
-{
-   const std::string domain = parameters.getParameter< std::string >( "domain" );
-
-   if ( domain == "tetrahedron" )
-   {
-      WALBERLA_LOG_INFO_ON_ROOT( "Preparing " << domain << " domain." );
-
-      const double top_x = 0.0;
-      const double top_y = 0.0;
-      const double top_z = parameters.getParameter< real_t >( "tetrahedron_height" );
-
-      const Point3D p0( { 0, 0, 0 } );
-      const Point3D p1( { 1.0, 0, 0 } );
-      const Point3D p2( { 0.0, 1.0, 0 } );
-      const Point3D p3( { top_x, top_y, top_z } );
-
-      // we permutate the vertices to study performance for different orientations:
-      const uint_t          permutationNumber = parameters.getParameter< uint_t >( "tetrahedron_permutation" );
-      std::vector< uint_t > order{ 0, 1, 2, 3 };
-      for ( uint_t i = 0; i < permutationNumber; ++i )
-         std::next_permutation( std::begin( order ), std::end( order ) );
-
-      std::array< Point3D, 4 > vertices;
-      vertices[order[0]] = p0;
-      vertices[order[1]] = p1;
-      vertices[order[2]] = p2;
-      vertices[order[3]] = p3;
-
-      MeshInfo meshInfo = MeshInfo::singleTetrahedron( vertices );
-
-      auto setupStorage =
-          std::make_shared< SetupPrimitiveStorage >( meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
-      setupStorage->setMeshBoundaryFlagsOnBoundary( 1, 0, true );
-
-      return setupStorage;
-   }
-   else
-   {
-      WALBERLA_ABORT( "unknown domain" );
-   }
-}
 
 template < typename OperatorType, typename FormType >
 std::shared_ptr< hyteg::Solver< OperatorType > >
@@ -236,7 +195,7 @@ int main( int argc, char** argv )
    // using OperatorType = P1ElementwiseBlendingDivKGradOperator;
    // using FormType     = forms::p1_div_k_grad_blending_q3;
    // auto         kappa2d = []( const Point3D& p ) { return 1.; };
-   //auto         kappa3d = []( const Point3D& p ) { return 1 + p[0] * p[0] * p[0] + p[1] + 10. * p[2] * p[2] * p[2]; };
+   // auto         kappa3d = []( const Point3D& p ) { return 1 + p[0] * p[0] * p[0] + p[1] + 10. * p[2] * p[2] * p[2]; };
    // auto         kappa3d = []( const Point3D& p ) { return 1 + p[0] * p[0] * p[0]; };
    // FormType     form( kappa3d, kappa2d );
    // OperatorType laplaceOperator( storage, minLevel, maxLevel, form );
