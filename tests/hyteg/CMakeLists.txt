@@ -213,6 +213,9 @@ waLBerla_execute_test(NAME DGIndexingTest)
 waLBerla_compile_test(FILES Indexing/EdgeDoFOrientationConversionTest.cpp DEPENDS hyteg core)
 waLBerla_execute_test(NAME EdgeDoFOrientationConversionTest)
 
+waLBerla_compile_test(FILES QuadrilateralPolynomialTest.cpp DEPENDS hyteg core)
+waLBerla_execute_test(NAME QuadrilateralPolynomialTest)
+
 if (HYTEG_BUILD_WITH_PETSC)
     waLBerla_compile_test(FILES Indexing/CouplingCountTest.cpp DEPENDS hyteg core)
     waLBerla_execute_test(NAME CouplingCountTest COMMAND $<TARGET_FILE:CouplingCountTest>)
