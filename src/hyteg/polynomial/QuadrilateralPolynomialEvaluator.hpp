@@ -22,10 +22,10 @@
 #include "core/DataTypes.h"
 #include "core/mpi/RecvBuffer.h"
 
-#include "hyteg/types/pointnd.hpp"
+#include "hyteg/polynomial/PolynomialEvaluator.hpp"
 #include "hyteg/polynomial/QuadrilateralBasis.hpp"
 #include "hyteg/polynomial/QuadrilateralPolynomial.hpp"
-#include "hyteg/polynomial/PolynomialEvaluator.hpp"
+#include "hyteg/types/pointnd.hpp"
 
 namespace hyteg {
 
@@ -50,22 +50,23 @@ class QuadrilateralPolynomial2DEvaluator
       poly2_ = &poly;
    }
 
-   void setY(real_t y) {
-      for (uint_t degree = 0; degree <= degreeX_; ++degree) {
-         poly1_.setCoefficient(degree, 0.0);
+   void setY( real_t y )
+   {
+      for ( uint_t degree = 0; degree <= degreeX_; ++degree )
+      {
+         poly1_.setCoefficient( degree, 0.0 );
       }
 
       const uint_t degreeY = poly2_->getDegree()[1];
 
-      uint_t start = 0;
       uint_t coeff = 0;
 
-      for (uint_t xIdx = 0; xIdx <= degreeX_; ++xIdx)
+      for ( uint_t xIdx = 0; xIdx <= degreeX_; ++xIdx )
       {
-         auto yPower = real_t(1.0);
-         for (uint_t yIdx = 0; yIdx <= degreeY; ++yIdx)
+         auto yPower = real_t( 1.0 );
+         for ( uint_t yIdx = 0; yIdx <= degreeY; ++yIdx )
          {
-            poly1_.addToCoefficient(xIdx, poly2_->getCoefficient(coeff) * yPower);
+            poly1_.addToCoefficient( xIdx, poly2_->getCoefficient( coeff ) * yPower );
 
             yPower *= y;
             coeff += 1;
@@ -73,9 +74,7 @@ class QuadrilateralPolynomial2DEvaluator
       }
    }
 
-   [[nodiscard]] real_t evalX(real_t x) const {
-      return poly1_.eval(x);
-   }
+   [[nodiscard]] real_t evalX( real_t x ) const { return poly1_.eval( x ); }
 
    real_t setStartX( real_t x, real_t h )
    {
@@ -157,6 +156,74 @@ class QuadrilateralPolynomial2DEvaluator
    uint_t degreeX_;
 
    std::vector< real_t > deltas_;
+};
+
+class QuadrilateralPolynomial3DEvaluator
+{
+ public:
+   explicit QuadrilateralPolynomial3DEvaluator( const QuadrilateralPolynomial3D& poly )
+   : basis2_( QuadrilateralBasis2D( poly.getDegree()[0], poly.getDegree()[1] ) )
+   , poly3_( &poly )
+   , poly2_( basis2_ )
+   , evaluator2d_( poly2_ )
+   {}
+
+   [[nodiscard]] real_t eval( const Point3D& x ) const { return poly3_->eval( x ); }
+
+   void setPolynomial( const QuadrilateralPolynomial3D& poly )
+   {
+      basis2_      = QuadrilateralBasis2D( QuadrilateralBasis2D( poly.getDegree()[0], poly.getDegree()[1] ) );
+      poly3_       = &poly;
+      poly2_       = QuadrilateralPolynomial2D( basis2_ );
+      evaluator2d_ = QuadrilateralPolynomial2DEvaluator( poly2_ );
+   }
+
+   void setZ( real_t z )
+   {
+      poly2_.setZero();
+
+      const uint_t degreeX = poly3_->getDegree()[0];
+      const uint_t degreeY = poly3_->getDegree()[1];
+      const uint_t degreeZ = poly3_->getDegree()[2];
+
+      uint_t coeff3 = 0;
+      uint_t coeff2 = 0;
+
+      for ( uint_t xIdx = 0; xIdx <= degreeX; ++xIdx )
+      {
+         for ( uint_t yIdx = 0; yIdx <= degreeY; ++yIdx )
+         {
+            auto zPower = real_t( 1.0 );
+
+            for ( uint_t zIdx = 0; zIdx <= degreeZ; ++zIdx )
+            {
+               poly2_.addToCoefficient( coeff2, poly3_->getCoefficient( coeff3 ) * zPower );
+
+               zPower *= z;
+               coeff3 += 1;
+            }
+
+            coeff2 += 1;
+         }
+      }
+   }
+
+   void setY( real_t y ) { evaluator2d_.setY( y ); }
+
+   [[nodiscard]] real_t evalX( real_t x ) const { return evaluator2d_.evalX( x ); }
+
+   real_t setStartX( real_t x, real_t h ) { return evaluator2d_.setStartX( x, h ); }
+
+   real_t incrementEval() { return evaluator2d_.incrementEval(); }
+
+ private:
+   QuadrilateralBasis2D basis2_;
+
+   const QuadrilateralPolynomial3D* poly3_;
+
+   QuadrilateralPolynomial2D poly2_;
+
+   QuadrilateralPolynomial2DEvaluator evaluator2d_;
 };
 
 } // namespace hyteg

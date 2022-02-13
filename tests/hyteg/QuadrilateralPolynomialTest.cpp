@@ -85,7 +85,7 @@ int main( int argc, char** argv )
       QuadrilateralBasis2D      basis( 2, 3 );
       QuadrilateralPolynomial2D polynomial( basis );
       for ( uint_t i = 0; i < 3 * 4; i += 1 )
-         polynomial.setCoefficient( i, i + 1 );
+         polynomial.setCoefficient( i, static_cast< real_t >( i + 1 ) );
 
       QuadrilateralPolynomial2DEvaluator polynomialEvaluator( polynomial );
 
@@ -100,5 +100,30 @@ int main( int argc, char** argv )
       WALBERLA_CHECK_FLOAT_EQUAL( polynomial.eval( p ), polynomialEvaluator.evalX( p[0] ) );
       WALBERLA_CHECK_FLOAT_EQUAL( polynomial.eval( Point2D( { x, y } ) ), polynomialEvaluator.setStartX( x, h ) );
       WALBERLA_CHECK_FLOAT_EQUAL( polynomial.eval( Point2D( { x + h, y } ) ), polynomialEvaluator.incrementEval() );
+      WALBERLA_CHECK_FLOAT_EQUAL( polynomial.eval( Point2D( { x + 2 * h, y } ) ), polynomialEvaluator.incrementEval() );
+   }
+
+   {
+      QuadrilateralBasis3D      basis( 2, 3, 4 );
+      QuadrilateralPolynomial3D polynomial( basis );
+      for ( uint_t i = 0; i < 3 * 4 * 5; i += 1 )
+         polynomial.setCoefficient( i, static_cast< real_t >( i + 1 ) );
+
+      QuadrilateralPolynomial3DEvaluator polynomialEvaluator( polynomial );
+
+      const real_t x = 1.2;
+      const real_t y = 0.5;
+      const real_t z = 3.8;
+      const real_t h = 0.1;
+
+      Point3D p( { x, y, z } );
+
+      polynomialEvaluator.setZ( z );
+      polynomialEvaluator.setY( y );
+
+      WALBERLA_CHECK_FLOAT_EQUAL( polynomial.eval( p ), polynomialEvaluator.evalX( p[0] ) );
+      WALBERLA_CHECK_FLOAT_EQUAL( polynomial.eval( Point3D( { x, y, z } ) ), polynomialEvaluator.setStartX( x, h ) );
+      WALBERLA_CHECK_FLOAT_EQUAL( polynomial.eval( Point3D( { x + h, y, z } ) ), polynomialEvaluator.incrementEval() );
+      WALBERLA_CHECK_FLOAT_EQUAL( polynomial.eval( Point3D( { x + 2 * h, y, z } ) ), polynomialEvaluator.incrementEval() );
    }
 }
