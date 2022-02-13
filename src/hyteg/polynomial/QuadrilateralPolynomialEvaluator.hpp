@@ -22,15 +22,20 @@
 #include "core/DataTypes.h"
 #include "core/mpi/RecvBuffer.h"
 
-#include "hyteg/polynomial/PolynomialEvaluator.hpp"
-#include "hyteg/polynomial/QuadrilateralBasis.hpp"
-#include "hyteg/polynomial/QuadrilateralPolynomial.hpp"
-#include "hyteg/types/pointnd.hpp"
-
 namespace hyteg {
 
 using walberla::real_t;
 using walberla::uint_t;
+
+} // namespace hyteg
+
+#include "hyteg/types/pointnd.hpp"
+
+#include "hyteg/polynomial/PolynomialEvaluator.hpp"
+#include "hyteg/polynomial/QuadrilateralBasis.hpp"
+#include "hyteg/polynomial/QuadrilateralPolynomial.hpp"
+
+namespace hyteg {
 
 class QuadrilateralPolynomial2DEvaluator
 {
@@ -161,6 +166,13 @@ class QuadrilateralPolynomial2DEvaluator
 class QuadrilateralPolynomial3DEvaluator
 {
  public:
+   explicit QuadrilateralPolynomial3DEvaluator( uint_t degreeX, uint_t degreeY, uint_t )
+       : basis2_( QuadrilateralBasis2D( degreeX, degreeY ) )
+       , poly3_( nullptr )
+       , poly2_( basis2_ )
+       , evaluator2d_( poly2_ )
+   {}
+
    explicit QuadrilateralPolynomial3DEvaluator( const QuadrilateralPolynomial3D& poly )
    : basis2_( QuadrilateralBasis2D( poly.getDegree()[0], poly.getDegree()[1] ) )
    , poly3_( &poly )

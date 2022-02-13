@@ -80,12 +80,14 @@ std::shared_ptr< hyteg::Solver< OperatorType > >
       auto eigen_smoother = std::make_shared< hyteg::HybridPrimitiveSmoother< OperatorType > >(
           op.getStorage(), op.getMinLevel(), op.getMaxLevel() );
 
-      const uint_t degree    = parameters.getParameter< uint_t >( "surrogate_degree" );
+      const uint_t degreeX   = parameters.getParameter< uint_t >( "surrogate_degree_x" );
+      const uint_t degreeY   = parameters.getParameter< uint_t >( "surrogate_degree_y" );
+      const uint_t degreeZ   = parameters.getParameter< uint_t >( "surrogate_degree_z" );
       const uint_t skipLevel = parameters.getParameter< uint_t >( "surrogate_skip_level" );
 
       // cell ilu
       auto cell_smoother = std::make_shared< hyteg::P1LDLTSurrogateCellSmoother< OperatorType, FormType > >(
-          op.getStorage(), op.getMinLevel(), op.getMaxLevel(), degree, form );
+          op.getStorage(), op.getMinLevel(), op.getMaxLevel(), degreeX, degreeY, degreeZ, form );
       cell_smoother->init( skipLevel );
       eigen_smoother->setCellSmoother( cell_smoother );
 

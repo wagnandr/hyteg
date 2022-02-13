@@ -1,6 +1,10 @@
 #pragma once
 
 #include "hyteg/polynomial/LSQPInterpolator.hpp"
+#include "hyteg/polynomial/QuadrilateralBasis.hpp"
+#include "hyteg/polynomial/QuadrilateralLSQPInterpolator.hpp"
+#include "hyteg/polynomial/QuadrilateralPolynomial.hpp"
+#include "hyteg/polynomial/QuadrilateralPolynomialEvaluator.hpp"
 
 #include "PrimitiveSmoothers.hpp"
 
@@ -482,35 +486,35 @@ class LDLTHierarchicalBoundaryStencilsMemoryDataHandling
 class LDLTPolynomials
 {
  public:
-   using Basis      = MonomialBasis3D;
-   using Polynomial = Polynomial3D< MonomialBasis3D >;
+   using Basis      = QuadrilateralBasis3D;
+   using Polynomial = QuadrilateralPolynomial3D;
 
-   explicit LDLTPolynomials( uint_t degree )
-   : degree_( degree )
+   LDLTPolynomials( uint_t degreeX, uint_t degreeY, uint_t degreeZ )
+   : basis_( degreeX, degreeY, degreeZ )
    {
       for ( auto d : lowerDirectionsAndCenter )
-         polynomials_.emplace( d, degree );
+         polynomials_.emplace( d, basis_ );
    }
 
-   inline Polynomial& getPolynomial( stencilDirection direction ) { return polynomials_[direction]; }
+   inline Polynomial& getPolynomial( stencilDirection direction ) { return polynomials_.at(direction); }
 
-   inline const Polynomial& operator[]( stencilDirection direction ) const { return polynomials_[direction]; }
+   inline const Polynomial& operator[]( stencilDirection direction ) const { return polynomials_.at(direction); }
 
-   [[nodiscard]] inline uint_t getDegree() const { return degree_; }
+   [[nodiscard]] inline std::array< uint_t, 3 > getDegrees() const { return basis_.getDegrees(); }
 
  private:
-   uint_t degree_;
+   Basis basis_;
 
-   mutable std::map< SD, Polynomial3D< MonomialBasis3D > > polynomials_;
+   mutable std::map< SD, Polynomial > polynomials_;
 };
 
 class LDLTHierachicalPolynomials
 {
  public:
-   LDLTHierachicalPolynomials( uint_t minLevel, uint_t maxLevel, uint_t degree )
+   LDLTHierachicalPolynomials( uint_t minLevel, uint_t maxLevel, uint_t degreeX, uint_t degreeY, uint_t degreeZ )
    : minLevel_( minLevel )
    , maxLevel_( maxLevel )
-   , collections( maxLevel - minLevel + 1, LDLTPolynomials( degree ) )
+   , collections( maxLevel - minLevel + 1, LDLTPolynomials( degreeX, degreeY, degreeZ ) )
    {}
 
    LDLTPolynomials& getLevel( uint_t level )
@@ -530,49 +534,60 @@ class LDLTHierachicalPolynomials
 class LDLTHierachicalPolynomialsDataHandling : public hyteg::OnlyInitializeDataHandling< LDLTHierachicalPolynomials, Cell >
 {
  public:
-   explicit LDLTHierachicalPolynomialsDataHandling( const uint_t& minLevel, const uint_t& maxLevel, const uint_t& degree )
+   explicit LDLTHierachicalPolynomialsDataHandling( const uint_t& minLevel,
+                                                    const uint_t& maxLevel,
+                                                    const uint_t& degreeX,
+                                                    const uint_t& degreeY,
+                                                    const uint_t& degreeZ )
    : minLevel_( minLevel )
    , maxLevel_( maxLevel )
-   , degree_( degree )
+   , degreeX_( degreeX )
+   , degreeY_( degreeY )
+   , degreeZ_( degreeZ )
    {}
 
    std::shared_ptr< LDLTHierachicalPolynomials > initialize( const Cell* const ) const override
    {
-      auto collection = std::make_shared< LDLTHierachicalPolynomials >( minLevel_, maxLevel_, degree_ );
+      auto collection = std::make_shared< LDLTHierachicalPolynomials >( minLevel_, maxLevel_, degreeX_, degreeY_, degreeZ_ );
       return collection;
    }
 
  private:
    uint_t minLevel_;
    uint_t maxLevel_;
-   uint_t degree_;
+   uint_t degreeX_;
+   uint_t degreeY_;
+   uint_t degreeZ_;
 };
 
 class Interpolators
 {
  public:
-   using Interpolator3D = VariableLSQPInterpolator3D< MonomialBasis3D >;
+   using Basis          = QuadrilateralBasis3D;
+   using Polynomial     = QuadrilateralPolynomial< 3, Point3D, Basis >;
+   using Interpolator3D = VariableQuadrilateralLSQPInterpolator< QuadrilateralBasis3D, Polynomial, Point3D >;
 
-   Interpolators()
+   Interpolators( uint_t degreeX, uint_t degreeY, uint_t degreeZ )
    {
+      Basis basis( degreeX, degreeY, degreeZ );
       for ( auto d : lowerDirectionsAndCenter )
-         interpolators[d] = Interpolator3D();
+         interpolators.emplace(d, basis );
    }
 
-   Interpolator3D& operator()( SD direction ) { return interpolators[direction]; }
+   Interpolator3D& operator()( SD direction ) { return interpolators.at(direction); }
 
    void addStencil( const Point3D& p, const std::map< SD, real_t >& stencil )
    {
       for ( auto d : lowerDirectionsAndCenter )
-         interpolators[d].addInterpolationPoint( p, stencil.at( d ) );
+         interpolators.at(d).addInterpolationPoint( p, stencil.at( d ) );
    }
 
-   void addValue( const Point3D& p, SD d, real_t v ) { interpolators[d].addInterpolationPoint( p, v ); }
+   void addValue( const Point3D& p, SD d, real_t v ) { interpolators.at(d).addInterpolationPoint( p, v ); }
 
    void interpolate( LDLTPolynomials& poly )
    {
       for ( auto d : lowerDirectionsAndCenter )
-         interpolators[d].interpolate( poly.getPolynomial( d ) );
+         interpolators.at(d).interpolate( poly.getPolynomial( d ) );
    }
 
  private:
@@ -583,12 +598,12 @@ template < size_t num_directions >
 class PolyStencil
 {
  public:
-   PolyStencil( uint_t degree, const std::array< SD, num_directions >& directions )
+   PolyStencil( const std::array< uint_t, 3 > degrees, const std::array< SD, num_directions >& directions )
    : directions_( directions )
    {
       for ( uint_t i = 0; i < num_directions; i += 1 )
       {
-         polynomials_.emplace_back( degree );
+         polynomials_.emplace_back( degrees[0], degrees[1], degrees[2] );
          offsetsX_.push_back( 0 );
          offsetsY_.push_back( 0 );
          offsetsZ_.push_back( 0 );
@@ -642,7 +657,7 @@ class PolyStencil
  private:
    std::array< SD, num_directions > directions_;
 
-   std::vector< Polynomial3DEvaluator > polynomials_;
+   std::vector< QuadrilateralPolynomial3DEvaluator > polynomials_;
 
    std::vector< real_t > offsetsX_;
    std::vector< real_t > offsetsY_;
@@ -785,7 +800,7 @@ void apply_surrogate_substitutions( LDLTBoundaryStencils& boundaryStencils,
    // forward substitution:
    // ---------------------
    {
-      PolyStencil< 7 > poly_stencil_lower( polynomials.getDegree(), lowerDirections );
+      PolyStencil< 7 > poly_stencil_lower( polynomials.getDegrees(), lowerDirections );
       poly_stencil_lower.setPolynomial( polynomials );
 
       std::map< SD, real_t > l_stencil;
@@ -909,7 +924,7 @@ void apply_surrogate_substitutions( LDLTBoundaryStencils& boundaryStencils,
    // diagonal:
    // ---------
    {
-      PolyStencil< 1 > poly_stencil_diagonal( polynomials.getDegree(), { SD::VERTEX_C } );
+      PolyStencil< 1 > poly_stencil_diagonal( polynomials.getDegrees(), { SD::VERTEX_C } );
       poly_stencil_diagonal.setPolynomial( polynomials );
 
       std::map< SD, real_t > l_stencil;
@@ -1021,7 +1036,7 @@ void apply_surrogate_substitutions( LDLTBoundaryStencils& boundaryStencils,
    // backward substitution:
    // ----------------------
    {
-      PolyStencil< 7 > poly_stencil_lower( polynomials.getDegree(), lowerDirections );
+      PolyStencil< 7 > poly_stencil_lower( polynomials.getDegrees(), lowerDirections );
       poly_stencil_lower.setPolynomial( polynomials );
       poly_stencil_lower.setOffset( SD::VERTEX_W, h, 0, 0 );
       poly_stencil_lower.setOffset( SD::VERTEX_S, 0, h, 0 );
@@ -1164,7 +1179,9 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
    P1LDLTSurrogateCellSmoother( std::shared_ptr< PrimitiveStorage > storage,
                                 uint_t                              minLevel,
                                 uint_t                              maxLevel,
-                                uint_t                              degree,
+                                uint_t                              degreeX,
+                                uint_t                              degreeY,
+                                uint_t                              degreeZ,
                                 FormType                            form )
    : storage_( std::move( storage ) )
    , tmp1_( "tmp", storage_, minLevel, maxLevel )
@@ -1173,11 +1190,13 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
    , flag_( hyteg::Inner | hyteg::NeumannBoundary | hyteg::FreeslipBoundary )
    , minLevel_( minLevel )
    , maxLevel_( maxLevel )
-   , polyDegree_( degree )
+   , polyDegreeX_( degreeX )
+   , polyDegreeY_( degreeY )
+   , polyDegreeZ_( degreeZ )
    {
       // storage for surrogate operator
-      auto polyDataHandling =
-          std::make_shared< ldlt::p1::dim3::LDLTHierachicalPolynomialsDataHandling >( minLevel_, maxLevel_, polyDegree_ );
+      auto polyDataHandling = std::make_shared< ldlt::p1::dim3::LDLTHierachicalPolynomialsDataHandling >(
+          minLevel_, maxLevel_, polyDegreeX_, polyDegreeY_, polyDegreeZ_ );
       storage_->addCellData( polynomialsID_, polyDataHandling, "P1LDLTSurrogateCellSmootherPolynomials" );
 
       // storage for the boundary stencils
@@ -1233,7 +1252,7 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
          return ( x_b % skipLength == 0 ) && ( y_b % skipLength == 0 ) && ( z_b % skipLength == 0 );
       };
 
-      ldlt::p1::dim3::Interpolators interpolators;
+      ldlt::p1::dim3::Interpolators interpolators( polyDegreeX_, polyDegreeY_, polyDegreeZ_ );
 
       // initialize boundary data:
       std::map< SD, real_t > unit_stencil;
@@ -1361,7 +1380,9 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
    uint_t minLevel_;
    uint_t maxLevel_;
 
-   uint_t polyDegree_;
+   uint_t polyDegreeX_;
+   uint_t polyDegreeY_;
+   uint_t polyDegreeZ_;
 
    PrimitiveDataID< ldlt::p1::dim3::LDLTHierarchicalBoundaryStencils, Cell > boundaryID_;
 
