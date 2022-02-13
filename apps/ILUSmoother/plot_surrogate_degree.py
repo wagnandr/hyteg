@@ -25,7 +25,9 @@ def run(
         params.append('-Parameters.smoother_type={}'.format(smoother_type))
 
         if surrogate_degree:
-            params.append('-Parameters.surrogate_degree={}'.format(surrogate_degree))
+            params.append('-Parameters.surrogate_degree_x={}'.format(surrogate_degree))
+            params.append('-Parameters.surrogate_degree_y={}'.format(surrogate_degree))
+            params.append('-Parameters.surrogate_degree_z={}'.format(surrogate_degree))
         if surrogate_skip_level:
             params.append('-Parameters.surrogate_skip_level={}'.format(surrogate_skip_level))
 

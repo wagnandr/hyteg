@@ -29,7 +29,8 @@ Parameters
 
   // which smoother: hyteg_gs, eigen_ilu, inplace_ldlt
   // smoother_type inplace_ldlt;
-  smoother_type surrogate_ldlt;
+  // smoother_type surrogate_ldlt;
+  smoother_type gs;
 
   surrogate_degree_x 0;
   surrogate_degree_y 0;
