@@ -6,14 +6,18 @@ import re
 def run(
     smoother_type,
     surrogate_degree=None,
-    surrogate_skip_level=None
+    surrogate_skip_level=None,
+    only_z=False
 ):
 
     print(smoother_type,
           surrogate_degree,
-          surrogate_skip_level)
+          surrogate_skip_level,
+          only_z)
 
     regex = r"Final eigenvalue: (.*)$"
+
+    output = None
 
     try:
         params = [
@@ -25,8 +29,9 @@ def run(
         params.append('-Parameters.smoother_type={}'.format(smoother_type))
 
         if surrogate_degree:
-            params.append('-Parameters.surrogate_degree_x={}'.format(surrogate_degree))
-            params.append('-Parameters.surrogate_degree_y={}'.format(surrogate_degree))
+            if not only_z:
+                params.append('-Parameters.surrogate_degree_x={}'.format(surrogate_degree))
+                params.append('-Parameters.surrogate_degree_y={}'.format(surrogate_degree))
             params.append('-Parameters.surrogate_degree_z={}'.format(surrogate_degree))
         if surrogate_skip_level:
             params.append('-Parameters.surrogate_skip_level={}'.format(surrogate_skip_level))
@@ -37,14 +42,13 @@ def run(
 
     except:
         print('some error :(')
-        print(output)
         return float('nan'), False
 
-    output = output.decode('utf-8')
+    out = output.decode('utf-8')
 
-    print(output)
+    print(out)
 
-    match = re.search(regex, output, re.MULTILINE)
+    match = re.search(regex, out, re.MULTILINE)
 
     if match == None:
         print('Error: Incomplete output')
@@ -59,11 +63,13 @@ gs_rate = run('gs')
 ilu_rate = run('inplace_ldlt')
 
 if True:
+    only_z = True
+    #degrees = list(range(1,13,1))
     degrees = list(range(1,13,1))
     rate_surrogate_ilu = []
 
     for degree in degrees:
-        rate = run('surrogate_ldlt', surrogate_degree=degree, surrogate_skip_level=20)
+        rate = run('surrogate_ldlt', surrogate_degree=degree, surrogate_skip_level=20, only_z=only_z)
         rate_surrogate_ilu.append(rate)
 
     plt.hlines(gs_rate, xmin=degrees[0], xmax=degrees[-1], colors='r', linestyles='dashed', label='GS')
@@ -73,7 +79,10 @@ if True:
     plt.grid(True)
     plt.ylim((0, 1))
     plt.ylabel(r'$\rho$')
-    plt.xlabel('degree')
+    if only_z:
+        plt.xlabel('degree z')
+    else:
+        plt.xlabel('degree')
     plt.legend()
     plt.show()
 
