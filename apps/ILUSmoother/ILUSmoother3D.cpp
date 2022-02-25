@@ -189,7 +189,8 @@ int main( int argc, char** argv )
                      All ^ DirichletBoundary );
    }
 
-   using OperatorType = hyteg::P1ConstantLaplaceOperator;
+   // using OperatorType = hyteg::P1ConstantLaplaceOperator;
+   using OperatorType = hyteg::P1BlendingLaplaceOperator;
    using FormType     = hyteg::forms::p1_diffusion_blending_q1;
    FormType     form;
    OperatorType laplaceOperator( storage, minLevel, maxLevel );
