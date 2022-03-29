@@ -47,6 +47,7 @@
 
 #include "block_smoother/HybridPrimitiveSmoother.hpp"
 #include "block_smoother/P1LDLTInplaceCellSmoother.hpp"
+#include "block_smoother/GSFaceSmoother.hpp"
 
 #include "utils/create_domain.hpp"
 
@@ -73,6 +74,9 @@ std::shared_ptr< hyteg::Solver< OperatorType > >
           op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form );
       cell_smoother->init();
       eigen_smoother->setCellSmoother( cell_smoother );
+
+      auto face_smoother = std::make_shared< hyteg::GSFaceSmoother< OperatorType, FormType > > (op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form);
+      eigen_smoother->setFaceSmoother( face_smoother );
 
       return eigen_smoother;
    }
