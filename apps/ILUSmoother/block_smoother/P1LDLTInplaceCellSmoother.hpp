@@ -84,7 +84,7 @@ bool on_diagonal_boundary( uint_t x, uint_t y, uint_t z, uint_t N )
    return x + y + z == N - 2;
 }
 
-bool on_south_boundary( uint x, uint_t y, uint_t z, uint_t N )
+bool on_south_boundary( uint_t x, uint_t y, uint_t z, uint_t N )
 {
    WALBERLA_UNUSED( x );
    WALBERLA_UNUSED( z );
@@ -92,7 +92,7 @@ bool on_south_boundary( uint x, uint_t y, uint_t z, uint_t N )
    return y == 1;
 }
 
-bool on_bottom_boundary( uint x, uint_t y, uint_t z, uint_t N )
+bool on_bottom_boundary( uint_t x, uint_t y, uint_t z, uint_t N )
 {
    WALBERLA_UNUSED( x );
    WALBERLA_UNUSED( y );
