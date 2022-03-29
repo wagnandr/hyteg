@@ -41,6 +41,8 @@ namespace hyteg {
 using walberla::NonCopyable;
 using walberla::uint_t;
 
+class StoragePermutator;
+
 namespace internal {
 
 class PrimitiveData : private NonCopyable
@@ -103,6 +105,7 @@ public:
   friend class PrimitiveStorage;
   template <class K_Simplex>
   friend class adaptiveRefinement::K_Mesh;
+  friend class StoragePermutator;
 
   typedef internal::PrimitiveData PrimitiveData;
 

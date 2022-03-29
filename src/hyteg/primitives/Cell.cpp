@@ -58,10 +58,7 @@ Cell::Cell( const PrimitiveID&                                 primitiveID,
    neighborEdges_.assign( edgeIDs.begin(), edgeIDs.end() );
    neighborFaces_.assign( faceIDs.begin(), faceIDs.end() );
 
-   faceInwardNormals_[0] = tetrahedronInwardNormal( coordinates_[1], coordinates_[2], coordinates_[3], coordinates_[0] );
-   faceInwardNormals_[1] = tetrahedronInwardNormal( coordinates_[0], coordinates_[2], coordinates_[3], coordinates_[1] );
-   faceInwardNormals_[2] = tetrahedronInwardNormal( coordinates_[1], coordinates_[0], coordinates_[3], coordinates_[2] );
-   faceInwardNormals_[3] = tetrahedronInwardNormal( coordinates_[1], coordinates_[2], coordinates_[0], coordinates_[3] );
+   calculateInwardNormals();
 }
 
 uint_t Cell::getLocalFaceID( const PrimitiveID& faceID ) const
@@ -119,6 +116,14 @@ void Cell::deserializeSubclass( walberla::mpi::RecvBuffer& recvBuffer )
    recvBuffer >> faceLocalVertexToCellLocalVertexMaps_;
    recvBuffer >> faceInwardNormals_;
    recvBuffer >> indirectNeighborCellIDs_;
+}
+
+void Cell::calculateInwardNormals()
+{
+   faceInwardNormals_[0] = tetrahedronInwardNormal( coordinates_[1], coordinates_[2], coordinates_[3], coordinates_[0] );
+   faceInwardNormals_[1] = tetrahedronInwardNormal( coordinates_[0], coordinates_[2], coordinates_[3], coordinates_[1] );
+   faceInwardNormals_[2] = tetrahedronInwardNormal( coordinates_[1], coordinates_[0], coordinates_[3], coordinates_[2] );
+   faceInwardNormals_[3] = tetrahedronInwardNormal( coordinates_[1], coordinates_[2], coordinates_[0], coordinates_[3] );
 }
 
 } // namespace hyteg

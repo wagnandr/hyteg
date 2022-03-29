@@ -4,6 +4,8 @@ target_sources( hyteg
     SetupPrimitiveStorage.cpp
     SetupPrimitiveStorage.hpp
     Visualization.hpp
-    PrimitiveStorage.cpp     
+    PrimitiveStorage.cpp
+    StoragePermutator.hpp
+    StoragePermutator.cpp
 )
 add_subdirectory( loadbalancing )

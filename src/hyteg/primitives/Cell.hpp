@@ -35,6 +35,7 @@ class Cell : public Primitive
    friend class SetupPrimitiveStorage;
    template <class K_Simplex>
    friend class adaptiveRefinement::K_Mesh;
+   friend class StoragePermutator;
 
    /// Creates a macro-cell instance
    ///
@@ -132,6 +133,8 @@ class Cell : public Primitive
 
    virtual void serializeSubclass( walberla::mpi::SendBuffer& sendBuffer ) const;
    virtual void deserializeSubclass( walberla::mpi::RecvBuffer& recvBuffer );
+
+   void calculateInwardNormals();
 
  private:
    std::array< Point3D, 4 >                    coordinates_;

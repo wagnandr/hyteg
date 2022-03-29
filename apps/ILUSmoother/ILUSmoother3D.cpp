@@ -43,6 +43,7 @@
 #include "hyteg/solvers/GaussSeidelSmoother.hpp"
 #include "hyteg/solvers/GeometricMultigridSolver.hpp"
 #include "hyteg/solvers/SORSmoother.hpp"
+#include "hyteg/primitivestorage/StoragePermutator.hpp"
 
 #include "block_smoother/HybridPrimitiveSmoother.hpp"
 #include "block_smoother/P1LDLTInplaceCellSmoother.hpp"
@@ -135,6 +136,9 @@ int main( int argc, char** argv )
    const std::string solution_type = parameters.getParameter< std::string >( "solution_type" );
 
    const auto setupStorage = createDomain( parameters );
+
+   StoragePermutator permutator;
+   permutator.permutate_ilu( *setupStorage );
 
    const auto storage = std::make_shared< PrimitiveStorage >( *setupStorage );
 
@@ -308,7 +312,8 @@ int main( int argc, char** argv )
 
       error.assign( { 1.0, -1.0 }, { u, solution }, maxLevel, hyteg::Inner );
       const real_t discr_l2_err = std::sqrt( error.dotGlobal( error, maxLevel, hyteg::Inner ) );
-      WALBERLA_LOG_INFO_ON_ROOT( "L2 error: " << discr_l2_err );
+      const real_t h = 1/std::pow(2, maxLevel);
+      WALBERLA_LOG_INFO_ON_ROOT( "L2 error: " << discr_l2_err * std::pow(h, 3./2.) );
 
       asymptoticConvergenceRate /= real_c( outerIter + 1 - asymptoticConvergenceStartIter );
       WALBERLA_LOG_INFO_ON_ROOT( "Asymptotic onvergence rate: " << std::scientific << asymptoticConvergenceRate );
