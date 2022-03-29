@@ -1,5 +1,16 @@
 waLBerla_link_files_to_builddir(*.msh)
 
+## adaptive refinement ##
+waLBerla_compile_test(FILES adaptiveRefinement/adaptiveRefinementTest.cpp DEPENDS hyteg core)
+waLBerla_execute_test(NAME adaptiveRefinementTest)
+
+waLBerla_compile_test(FILES adaptiveRefinement/adaptiveRefinementBoundaryTest.cpp DEPENDS hyteg core)
+waLBerla_execute_test(NAME adaptiveRefinementBoundaryTest)
+
+waLBerla_compile_test(FILES adaptiveRefinement/adaptiveRefinementBlendingTest.cpp DEPENDS hyteg core)
+waLBerla_execute_test(NAME adaptiveRefinementBlendingTest)
+
+
 ## Convergence ##
 waLBerla_compile_test(FILES convergence/P1CGConvergenceTest.cpp DEPENDS hyteg core)
 waLBerla_execute_test(NAME P1CGConvergenceTest)
@@ -33,8 +44,8 @@ waLBerla_compile_test(FILES convergence/P2GMG3DConvergenceTest.cpp DEPENDS hyteg
 waLBerla_execute_test(NAME P2GMG3DConvergenceTest)
 waLBerla_execute_test(NAME P2GMG3DConvergenceTestMPI COMMAND $<TARGET_FILE:P2GMG3DConvergenceTest> PROCESSES 2)
 
-waLBerla_compile_test(FILES convergence/P1StokesBlockCGTest.cpp DEPENDS hyteg core)
-waLBerla_execute_test(NAME P1StokesBlockCGTest)
+waLBerla_compile_test(FILES convergence/P1VectorLaplaceCGTest.cpp DEPENDS hyteg core)
+waLBerla_execute_test(NAME P1VectorLaplaceCGTest)
 
 #waLBerla_compile_test(FILES convergence/P1CGTensorVarcoeffConvergenceTest.cpp DEPENDS hyteg core)
 #waLBerla_execute_test(NAME P1CGTensorVarcoeffConvergenceTest)
@@ -414,8 +425,10 @@ waLBerla_execute_test(NAME P2LaplaceOperator3DTest)
 if (HYTEG_BUILD_WITH_PETSC)
     waLBerla_compile_test(FILES P2/P2PetscSolveTest.cpp DEPENDS hyteg core)
     waLBerla_execute_test(NAME P2PetscSolveTest1 COMMAND $<TARGET_FILE:P2PetscSolveTest> PROCESSES 1)
-    #waLBerla_execute_test(NAME P2PetscSolveTest2 COMMAND $<TARGET_FILE:P2PetscSolveTest> PROCESSES 2)
+    waLBerla_execute_test(NAME P2PetscSolveTest2 COMMAND $<TARGET_FILE:P2PetscSolveTest> PROCESSES 2)
+if(NOT WALBERLA_CXX_COMPILER_IS_INTELLLVM )
     waLBerla_execute_test(NAME P2PetscSolveTest3 COMMAND $<TARGET_FILE:P2PetscSolveTest> PROCESSES 8)
+endif()
 endif ()
 
 if (HYTEG_BUILD_WITH_PETSC)
@@ -527,9 +540,6 @@ waLBerla_execute_test(NAME DGMinMaxTest)
 waLBerla_compile_test(FILES vCycleTest.cpp DEPENDS hyteg core)
 waLBerla_execute_test(NAME vCycleTest1 COMMAND $<TARGET_FILE:vCycleTest>)
 
-waLBerla_compile_test(FILES SmoothableTest.cpp DEPENDS hyteg core)
-waLBerla_execute_test(NAME SmoothableTest)
-
 waLBerla_compile_test(FILES DGCommTest.cpp DEPENDS hyteg core)
 waLBerla_execute_test(NAME DGCommTest)
 
@@ -613,10 +623,10 @@ waLBerla_execute_test(NAME PackageBufferSystemTest2 COMMAND $<TARGET_FILE:Packag
 waLBerla_execute_test(NAME PackageBufferSystemTest3 COMMAND $<TARGET_FILE:PackageBufferSystemTest> PROCESSES 3)
 waLBerla_execute_test(NAME PackageBufferSystemTest4 COMMAND $<TARGET_FILE:PackageBufferSystemTest> PROCESSES 4)
 
-waLBerla_compile_test(FILES MeshInfoTest.cpp DEPENDS hyteg core)
+waLBerla_compile_test(FILES meshes/MeshInfoTest.cpp DEPENDS hyteg core)
 waLBerla_execute_test(NAME MeshInfoTest1 COMMAND $<TARGET_FILE:MeshInfoTest>)
 waLBerla_execute_test(NAME MeshInfoTest2 COMMAND $<TARGET_FILE:MeshInfoTest> PROCESSES 2)
-waLBerla_compile_test(FILES MeshGenTest.cpp DEPENDS hyteg core)
+waLBerla_compile_test(FILES meshes/MeshGenTest.cpp DEPENDS hyteg core)
 waLBerla_execute_test(NAME MeshInfoTest3 COMMAND $<TARGET_FILE:MeshGenTest>)
 waLBerla_execute_test(NAME MeshInfoTest4 COMMAND $<TARGET_FILE:MeshGenTest> PROCESSES 2)
 
@@ -652,9 +662,9 @@ if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     waLBerla_execute_test(NAME AffineMap3DTest1 COMMAND $<TARGET_FILE:AffineMap3DTest>)
 endif ()
 
+waLBerla_compile_test(FILES blending/P2P1StokesElementwiseAnnulusBlendingTest.cpp DEPENDS hyteg core)
 if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     if (NOT WALBERLA_CXX_COMPILER_IS_INTEL)
-        waLBerla_compile_test(FILES blending/P2P1StokesElementwiseAnnulusBlendingTest.cpp DEPENDS hyteg core)
         waLBerla_execute_test(NAME P2P1StokesElementwiseAnnulusBlendingTest COMMAND $<TARGET_FILE:P2P1StokesElementwiseAnnulusBlendingTest>)
     endif ()
 endif ()
@@ -775,3 +785,17 @@ waLBerla_compile_test(FILES geometry/SphereToolsTest.cpp DEPENDS hyteg core)
 waLBerla_execute_test(NAME SphereToolsTest1 COMMAND $<TARGET_FILE:SphereToolsTest>)
 waLBerla_execute_test(NAME SphereToolsTest2 COMMAND $<TARGET_FILE:SphereToolsTest> PROCESSES 2)
 waLBerla_execute_test(NAME SphereToolsTest4 COMMAND $<TARGET_FILE:SphereToolsTest> PROCESSES 4)
+
+## Basic Smoothing and Solving
+waLBerla_compile_test(FILES smooth+solve/SmoothableTest.cpp DEPENDS hyteg core)
+waLBerla_execute_test(NAME SmoothableTest)
+
+waLBerla_compile_test(FILES smooth+solve/VectorToVectorOperatorCGTest.cpp DEPENDS hyteg core)
+waLBerla_execute_test(NAME VectorToVectorOperatorCGTest)
+
+waLBerla_compile_test(FILES smooth+solve/VectorToVectorOperatorChebyshevTest.cpp DEPENDS hyteg core)
+waLBerla_execute_test(NAME VectorToVectorOperatorChebyshevTest)
+
+## Structural
+waLBerla_compile_test(FILES PrintInfoTest.cpp)
+waLBerla_execute_test(NAME PrintInfoTest)
