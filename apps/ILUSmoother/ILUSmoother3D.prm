@@ -1,7 +1,7 @@
 Parameters
 {
   minLevel 2;
-  maxLevel 6;
+  maxLevel 4;
   max_outer_iter 20;
   max_coarse_iter 100;
   mg_tolerance 1e-14;
@@ -20,9 +20,11 @@ Parameters
   // which solution: zero, sines?
   solution_type sines;
 
-  domain tetrahedron;
+  // domain tetrahedron;
   tetrahedron_height 0.1;
-  tetrahedron_permutation 0;
+  tetrahedron_permutation 8;
+
+  domain squished_cube;
 
   // use PCG with mg preconditioner
   usePCG false;

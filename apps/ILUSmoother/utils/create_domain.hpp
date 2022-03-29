@@ -26,8 +26,8 @@
 #include "hyteg/primitivestorage/SetupPrimitiveStorage.hpp"
 
 using walberla::real_t;
-using walberla::uint_t;
 using walberla::uint_c;
+using walberla::uint_t;
 
 std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::BlockHandle& parameters )
 {
@@ -59,6 +59,18 @@ std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::
       vertices[order[3]] = p3;
 
       hyteg::MeshInfo meshInfo = hyteg::MeshInfo::singleTetrahedron( vertices );
+
+      auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
+          meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
+      setupStorage->setMeshBoundaryFlagsOnBoundary( 1, 0, true );
+
+      return setupStorage;
+   }
+   else if ( domain == "squished_cube" )
+   {
+      const double    top_z = parameters.getParameter< real_t >( "tetrahedron_height" );
+      hyteg::MeshInfo meshInfo =
+          hyteg::MeshInfo::meshCuboid( hyteg::Point3D( { 0, 0, 0 } ), hyteg::Point3D( { 1, 1, top_z } ), 1, 1, 1 );
 
       auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
           meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );

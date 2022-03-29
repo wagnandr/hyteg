@@ -95,6 +95,7 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
          const DoFType vertexBC = x.getBoundaryCondition().getBoundaryType( vertex.getMeshBoundaryFlag() );
          if ( testFlag( vertexBC, hyteg::Inner | hyteg::NeumannBoundary | hyteg::FreeslipBoundary ) )
          {
+            WALBERLA_CHECK_NOT_NULLPTR( vertex_smoother.get() );
             vertex_smoother->smooth( op, level, vertex, x, b );
          }
       }
@@ -110,6 +111,7 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
          const DoFType edgeBC = x.getBoundaryCondition().getBoundaryType( edge.getMeshBoundaryFlag() );
          if ( testFlag( edgeBC, hyteg::Inner | hyteg::NeumannBoundary | hyteg::FreeslipBoundary ) )
          {
+            WALBERLA_CHECK_NOT_NULLPTR( edge_smoother.get() );
             edge_smoother->smooth( op, level, edge, x, b );
          }
       }
@@ -125,6 +127,7 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
          const DoFType edgeBC = x.getBoundaryCondition().getBoundaryType( edge.getMeshBoundaryFlag() );
          if ( testFlag( edgeBC, hyteg::Inner | hyteg::NeumannBoundary | hyteg::FreeslipBoundary ) )
          {
+            WALBERLA_CHECK_NOT_NULLPTR( edge_smoother.get() );
             edge_smoother->smooth_backwards( op, level, edge, x, b );
          }
       }
@@ -140,6 +143,7 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
          const DoFType faceBC = x.getBoundaryCondition().getBoundaryType( face.getMeshBoundaryFlag() );
          if ( testFlag( faceBC, hyteg::Inner | hyteg::NeumannBoundary | hyteg::FreeslipBoundary ) )
          {
+            WALBERLA_CHECK_NOT_NULLPTR( face_smoother.get() );
             face_smoother->smooth( op, level, face, x, b );
          }
       }
@@ -155,6 +159,7 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
          const DoFType faceBC = x.getBoundaryCondition().getBoundaryType( face.getMeshBoundaryFlag() );
          if ( testFlag( faceBC, hyteg::Inner | hyteg::NeumannBoundary | hyteg::FreeslipBoundary ) )
          {
+            WALBERLA_CHECK_NOT_NULLPTR( face_smoother.get() );
             face_smoother->smooth_backwards( op, level, face, x, b );
          }
       }
@@ -169,6 +174,7 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
          const DoFType cellBC = x.getBoundaryCondition().getBoundaryType( cell.getMeshBoundaryFlag() );
          if ( testFlag( cellBC, hyteg::Inner | hyteg::NeumannBoundary | hyteg::FreeslipBoundary ) )
          {
+            WALBERLA_CHECK_NOT_NULLPTR( cell_smoother.get() );
             cell_smoother->smooth_backwards( op, level, cell, x, b );
          }
       }
