@@ -1,7 +1,7 @@
 Parameters
 {
   minLevel 2;
-  maxLevel 4;
+  maxLevel 3;
   max_outer_iter 20;
   max_coarse_iter 100;
   mg_tolerance 1e-14;
@@ -15,16 +15,17 @@ Parameters
 
   // replaces the zero initial guess with something random
   randomInitialGuess true;
-  powermethod true;
+  powermethod false;
 
   // which solution: zero, sines?
   solution_type sines;
 
   // domain tetrahedron;
-  tetrahedron_height 0.1;
+  tetrahedron_height 0.5;
   tetrahedron_permutation 8;
 
   domain squished_cube;
+  // domain tetrahedron;
 
   // use PCG with mg preconditioner
   usePCG false;
@@ -32,12 +33,12 @@ Parameters
   // which smoother: hyteg_gs, eigen_ilu, inplace_ldlt
   // smoother_type inplace_ldlt;
   // smoother_type surrogate_ldlt;
-  smoother_type gs;
+  smoother_type inplace_ldlt;
 
   surrogate_degree_x 0;
   surrogate_degree_y 0;
   surrogate_degree_z 12;
-  surrogate_skip_level 6;
+  surrogate_skip_level 4;
 
   // damping factor of the smoother
   relax 1.;

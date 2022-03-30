@@ -47,7 +47,9 @@
 
 #include "block_smoother/HybridPrimitiveSmoother.hpp"
 #include "block_smoother/P1LDLTInplaceCellSmoother.hpp"
+#include "block_smoother/GSCellSmoother.hpp"
 #include "block_smoother/GSFaceSmoother.hpp"
+#include "block_smoother/GSEdgeSmoother.hpp"
 
 #include "utils/create_domain.hpp"
 
@@ -70,13 +72,22 @@ std::shared_ptr< hyteg::Solver< OperatorType > >
           op.getStorage(), op.getMinLevel(), op.getMaxLevel() );
 
       // cell ilu
+      /*
       auto cell_smoother = std::make_shared< hyteg::P1LDLTInplaceCellSmoother< OperatorType, FormType > >(
           op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form );
       cell_smoother->init();
       eigen_smoother->setCellSmoother( cell_smoother );
+       */
+
+      auto cell_smoother = std::make_shared< hyteg::GSCellSmoother< OperatorType, FormType > >(
+          op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form );
+      eigen_smoother->setCellSmoother( cell_smoother );
 
       auto face_smoother = std::make_shared< hyteg::GSFaceSmoother< OperatorType, FormType > > (op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form);
       eigen_smoother->setFaceSmoother( face_smoother );
+
+      auto edge_smoother = std::make_shared< hyteg::GSEdgeSmoother< OperatorType, FormType > > (op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form);
+      eigen_smoother->setEdgeSmoother( edge_smoother );
 
       return eigen_smoother;
    }
@@ -95,6 +106,12 @@ std::shared_ptr< hyteg::Solver< OperatorType > >
           op.getStorage(), op.getMinLevel(), op.getMaxLevel(), degreeX, degreeY, degreeZ, form );
       cell_smoother->init( skipLevel );
       eigen_smoother->setCellSmoother( cell_smoother );
+
+      auto face_smoother = std::make_shared< hyteg::GSFaceSmoother< OperatorType, FormType > > (op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form);
+      eigen_smoother->setFaceSmoother( face_smoother );
+
+      auto edge_smoother = std::make_shared< hyteg::GSEdgeSmoother< OperatorType, FormType > > (op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form);
+      eigen_smoother->setEdgeSmoother( edge_smoother );
 
       return eigen_smoother;
    }

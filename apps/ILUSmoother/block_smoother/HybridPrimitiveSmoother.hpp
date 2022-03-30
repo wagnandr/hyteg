@@ -175,7 +175,7 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
          if ( testFlag( cellBC, hyteg::Inner | hyteg::NeumannBoundary | hyteg::FreeslipBoundary ) )
          {
             WALBERLA_CHECK_NOT_NULLPTR( cell_smoother.get() );
-            cell_smoother->smooth_backwards( op, level, cell, x, b );
+            cell_smoother->smooth( op, level, cell, x, b );
          }
       }
    }
