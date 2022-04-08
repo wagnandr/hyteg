@@ -166,8 +166,12 @@ int main( int argc, char** argv )
 
    const auto setupStorage = createDomain( parameters );
 
-   StoragePermutator permutator;
-   permutator.permutate_ilu( *setupStorage );
+   if (parameters.getParameter< bool >("auto_permutation"))
+   {
+      WALBERLA_LOG_INFO_ON_ROOT("applying auto permutation");
+      StoragePermutator permutator;
+      permutator.permutate_ilu( *setupStorage );
+   }
 
    const auto storage = std::make_shared< PrimitiveStorage >( *setupStorage );
 
