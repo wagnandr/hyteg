@@ -578,6 +578,18 @@ class MeshInfo
    /// Returns cells of the mesh
    const CellContainer& getCells() const { return cells_; }
 
+   /// Returns vertices of the mesh
+   VertexContainer& getVertices() { return vertices_; };
+
+   /// Returns edges of the mesh
+   EdgeContainer& getEdges() { return edges_; };
+
+   /// Returns faces of the mesh
+   FaceContainer& getFaces() { return faces_; }
+
+   /// Returns cells of the mesh
+   CellContainer& getCells() { return cells_; }
+
  private:
    MeshInfo(){};
 

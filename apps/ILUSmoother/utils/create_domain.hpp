@@ -81,6 +81,28 @@ std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::
 
       return setupStorage;
    }
+   else if (domain == "two_layer_cube")
+   {
+      const double    top_z = parameters.getParameter< real_t >( "tetrahedron_height" );
+      hyteg::MeshInfo meshInfo =
+          hyteg::MeshInfo::meshCuboid( hyteg::Point3D( { 0, 0, 0 } ), hyteg::Point3D( { 1, 1, 1. } ), 1, 1, 2 );
+      for(auto& vIt: meshInfo.getVertices())
+      {
+         hyteg::MeshInfo::Vertex& v = vIt.second;
+         auto c = v.getCoordinates();
+
+         if (c[2] >= 0.5-1e-14 && c[2] <= 0.5+1e-14)
+         {
+            v.setCoordinates(hyteg::Point3D({c[0], c[1], top_z}));
+         }
+      }
+
+      auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
+          meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
+      setupStorage->setMeshBoundaryFlagsOnBoundary( 1, 0, true );
+
+      return setupStorage;
+   }
    else
    {
       WALBERLA_ABORT( "unknown domain" );
