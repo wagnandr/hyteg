@@ -39,18 +39,17 @@
 #include "hyteg/p1functionspace/P1VariableOperator.hpp"
 #include "hyteg/primitivestorage/PrimitiveStorage.hpp"
 #include "hyteg/primitivestorage/SetupPrimitiveStorage.hpp"
+#include "hyteg/primitivestorage/StoragePermutator.hpp"
 #include "hyteg/solvers/CGSolver.hpp"
 #include "hyteg/solvers/GaussSeidelSmoother.hpp"
 #include "hyteg/solvers/GeometricMultigridSolver.hpp"
 #include "hyteg/solvers/SORSmoother.hpp"
-#include "hyteg/primitivestorage/StoragePermutator.hpp"
 
+#include "block_smoother/GSCellSmoother.hpp"
+#include "block_smoother/GSEdgeSmoother.hpp"
+#include "block_smoother/GSFaceSmoother.hpp"
 #include "block_smoother/HybridPrimitiveSmoother.hpp"
 #include "block_smoother/P1LDLTInplaceCellSmoother.hpp"
-#include "block_smoother/GSCellSmoother.hpp"
-#include "block_smoother/GSFaceSmoother.hpp"
-#include "block_smoother/GSEdgeSmoother.hpp"
-
 #include "utils/create_domain.hpp"
 
 using walberla::real_t;
@@ -66,55 +65,60 @@ std::shared_ptr< hyteg::Solver< OperatorType > >
 {
    const std::string smoother_type = parameters.getParameter< std::string >( "smoother_type" );
 
-   if ( smoother_type == "inplace_ldlt" )
+   if ( smoother_type == "inplace_ldlt" || smoother_type == "surrogate_ldlt" || smoother_type == "cell_gs" )
    {
       auto eigen_smoother = std::make_shared< hyteg::HybridPrimitiveSmoother< OperatorType > >(
           op.getStorage(), op.getMinLevel(), op.getMaxLevel() );
 
       // cell ilu
-      auto cell_smoother = std::make_shared< hyteg::P1LDLTInplaceCellSmoother< OperatorType, FormType > >(
+      if ( smoother_type == "inplace_ldlt" )
+      {
+         auto cell_smoother = std::make_shared< hyteg::P1LDLTInplaceCellSmoother< OperatorType, FormType > >(
+             op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form );
+         cell_smoother->init();
+         eigen_smoother->setCellSmoother( cell_smoother );
+      }
+      else if ( smoother_type == "surrogate_ldlt" )
+      {
+         const uint_t degreeX   = parameters.getParameter< uint_t >( "surrogate_degree_x" );
+         const uint_t degreeY   = parameters.getParameter< uint_t >( "surrogate_degree_y" );
+         const uint_t degreeZ   = parameters.getParameter< uint_t >( "surrogate_degree_z" );
+         const uint_t skipLevel = parameters.getParameter< uint_t >( "surrogate_skip_level" );
+
+         // cell ilu
+         auto cell_smoother = std::make_shared< hyteg::P1LDLTSurrogateCellSmoother< OperatorType, FormType > >(
+             op.getStorage(), op.getMinLevel(), op.getMaxLevel(), degreeX, degreeY, degreeZ, form );
+         cell_smoother->init( skipLevel );
+         eigen_smoother->setCellSmoother( cell_smoother );
+      }
+      else if ( smoother_type == "cell_gs" )
+      {
+         auto cell_smoother = std::make_shared< hyteg::GSCellSmoother< OperatorType, FormType > >(
+             op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form );
+         eigen_smoother->setCellSmoother( cell_smoother );
+         eigen_smoother->setConsecutiveBackwardsSmoothingStepsOnCells( 1 );
+      }
+      else
+      {
+         WALBERLA_ABORT( "unknown smoother type" );
+      }
+
+      auto sm_steps_lower_primitives = parameters.getParameter< uint_t >( "sm_steps_lower_primitives" );
+      eigen_smoother->setConsecutiveSmoothingStepsOnEdges( sm_steps_lower_primitives );
+      eigen_smoother->setConsecutiveSmoothingStepsOnFaces( sm_steps_lower_primitives );
+      eigen_smoother->setConsecutiveSmoothingStepsOnVertices( sm_steps_lower_primitives );
+
+      auto sm_steps_lower_primitives_bw = parameters.getParameter< uint_t >( "sm_steps_lower_primitives_backward" );
+      eigen_smoother->setConsecutiveBackwardsSmoothingStepsOnEdges( sm_steps_lower_primitives_bw );
+      eigen_smoother->setConsecutiveBackwardsSmoothingStepsOnFaces( sm_steps_lower_primitives_bw );
+      eigen_smoother->setConsecutiveBackwardsSmoothingStepsOnVertices( sm_steps_lower_primitives_bw );
+
+      auto face_smoother = std::make_shared< hyteg::GSFaceSmoother< OperatorType, FormType > >(
           op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form );
-      cell_smoother->init();
-      eigen_smoother->setCellSmoother( cell_smoother );
-
-      // eigen_smoother->setConsecutiveSmoothingStepsOnEdges(10);
-      // eigen_smoother->setConsecutiveSmoothingStepsOnFaces(10);
-      // eigen_smoother->setConsecutiveSmoothingStepsOnVertices(10);
-
-      /*
-      auto cell_smoother = std::make_shared< hyteg::GSCellSmoother< OperatorType, FormType > >(
-          op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form );
-      eigen_smoother->setCellSmoother( cell_smoother );
-      */
-
-      auto face_smoother = std::make_shared< hyteg::GSFaceSmoother< OperatorType, FormType > > (op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form);
       eigen_smoother->setFaceSmoother( face_smoother );
 
-      auto edge_smoother = std::make_shared< hyteg::GSEdgeSmoother< OperatorType, FormType > > (op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form);
-      eigen_smoother->setEdgeSmoother( edge_smoother );
-
-      return eigen_smoother;
-   }
-   else if ( smoother_type == "surrogate_ldlt" )
-   {
-      auto eigen_smoother = std::make_shared< hyteg::HybridPrimitiveSmoother< OperatorType > >(
-          op.getStorage(), op.getMinLevel(), op.getMaxLevel() );
-
-      const uint_t degreeX   = parameters.getParameter< uint_t >( "surrogate_degree_x" );
-      const uint_t degreeY   = parameters.getParameter< uint_t >( "surrogate_degree_y" );
-      const uint_t degreeZ   = parameters.getParameter< uint_t >( "surrogate_degree_z" );
-      const uint_t skipLevel = parameters.getParameter< uint_t >( "surrogate_skip_level" );
-
-      // cell ilu
-      auto cell_smoother = std::make_shared< hyteg::P1LDLTSurrogateCellSmoother< OperatorType, FormType > >(
-          op.getStorage(), op.getMinLevel(), op.getMaxLevel(), degreeX, degreeY, degreeZ, form );
-      cell_smoother->init( skipLevel );
-      eigen_smoother->setCellSmoother( cell_smoother );
-
-      auto face_smoother = std::make_shared< hyteg::GSFaceSmoother< OperatorType, FormType > > (op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form);
-      eigen_smoother->setFaceSmoother( face_smoother );
-
-      auto edge_smoother = std::make_shared< hyteg::GSEdgeSmoother< OperatorType, FormType > > (op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form);
+      auto edge_smoother = std::make_shared< hyteg::GSEdgeSmoother< OperatorType, FormType > >(
+          op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form );
       eigen_smoother->setEdgeSmoother( edge_smoother );
 
       return eigen_smoother;
@@ -218,9 +222,9 @@ int main( int argc, char** argv )
                      All ^ DirichletBoundary );
    }
 
-   // using OperatorType = hyteg::P1ConstantLaplaceOperator;
-   using OperatorType = hyteg::P1BlendingLaplaceOperator;
-   using FormType     = hyteg::forms::p1_diffusion_blending_q1;
+   using OperatorType = hyteg::P1ConstantLaplaceOperator;
+   // using OperatorType = hyteg::P1BlendingLaplaceOperator;
+   using FormType = hyteg::forms::p1_diffusion_blending_q1;
    FormType     form;
    OperatorType laplaceOperator( storage, minLevel, maxLevel );
 
@@ -337,8 +341,8 @@ int main( int argc, char** argv )
 
       error.assign( { 1.0, -1.0 }, { u, solution }, maxLevel, hyteg::Inner );
       const real_t discr_l2_err = std::sqrt( error.dotGlobal( error, maxLevel, hyteg::Inner ) );
-      const real_t h = 1/std::pow(2, maxLevel);
-      WALBERLA_LOG_INFO_ON_ROOT( "L2 error: " << discr_l2_err * std::pow(h, 3./2.) );
+      const real_t h            = 1 / std::pow( 2, maxLevel );
+      WALBERLA_LOG_INFO_ON_ROOT( "L2 error: " << discr_l2_err * std::pow( h, 3. / 2. ) );
 
       asymptoticConvergenceRate /= real_c( outerIter + 1 - asymptoticConvergenceStartIter );
       WALBERLA_LOG_INFO_ON_ROOT( "Asymptotic onvergence rate: " << std::scientific << asymptoticConvergenceRate );

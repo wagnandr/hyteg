@@ -41,11 +41,13 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
    , consecutiveSmoothingStepsOnEdges_( 1 )
    , consecutiveSmoothingStepsOnFaces_( 1 )
    , consecutiveSmoothingStepsOnCells_( 1 )
+   , consecutiveBackwardsSmoothingStepsOnCells_( 0 )
    , consecutiveBackwardsSmoothingStepsOnVertices_( 0 )
    , consecutiveBackwardsSmoothingStepsOnEdges_( 0 )
    , consecutiveBackwardsSmoothingStepsOnFaces_( 0 )
    , minLevel_( minLevel )
    , maxLevel_( maxLevel )
+   , backwardIterations_(false)
    // TODO: Add sensible defaults here
    , vertex_smoother( nullptr )
    , edge_smoother( nullptr )
@@ -77,6 +79,9 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
    /// Sets the number of consecutive smoothing steps applied on the cell primitive without communication.
    void setConsecutiveSmoothingStepsOnCells( uint_t steps ) { consecutiveSmoothingStepsOnCells_ = steps; }
 
+   /// Sets the number of consecutive smoothing steps applied on the cell primitive without communication.
+   void setConsecutiveBackwardsSmoothingStepsOnCells( uint_t steps ) { consecutiveBackwardsSmoothingStepsOnCells_ = steps; }
+
    /// Sets the number of consecutive smoothing steps applied on the vertex primitive without communication.
    void setConsecutiveBackwardsSmoothingStepsOnVertices( uint_t steps ) { consecutiveBackwardsSmoothingStepsOnVertices_ = steps; }
 
@@ -85,6 +90,8 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
 
    /// Sets the number of consecutive smoothing steps applied on the face primitive without communication.
    void setConsecutiveBackwardsSmoothingStepsOnFaces( uint_t steps ) { consecutiveBackwardsSmoothingStepsOnFaces_ = steps; }
+
+   void activateBackwardIterationsOnCell () { backwardIterations_ = true; }
 
    /// Applies GS on the vertices.
    void smooth_gs_on_vertices( const OperatorType& op, const FunctionType& x, const FunctionType& b, const uint_t level )
@@ -185,6 +192,25 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
       cell_smoother->postSmooth(op, level, x, b);
    }
 
+   void smooth_gs_on_cells_backwards( const OperatorType& op, const FunctionType& x, const FunctionType& b, const uint_t level )
+   {
+      cell_smoother->preSmooth(op, level, x, b);
+
+      for ( auto& it : storage_->getCells() )
+      {
+         Cell& cell = *it.second;
+
+         const DoFType cellBC = x.getBoundaryCondition().getBoundaryType( cell.getMeshBoundaryFlag() );
+         if ( testFlag( cellBC, hyteg::Inner | hyteg::NeumannBoundary | hyteg::FreeslipBoundary ) )
+         {
+            WALBERLA_CHECK_NOT_NULLPTR( cell_smoother.get() );
+            cell_smoother->smooth_backwards( op, level, cell, x, b );
+         }
+      }
+
+      cell_smoother->postSmooth(op, level, x, b);
+   }
+
    void solve( const OperatorType& op, const FunctionType& x, const FunctionType& b, const walberla::uint_t level ) override
    {
       x.template communicate< Vertex, Edge >( level );
@@ -220,6 +246,9 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
       for ( uint_t pit = 0; pit < consecutiveSmoothingStepsOnCells_; ++pit )
          smooth_gs_on_cells( op, x, b, level );
 
+      for ( uint_t pit = 0; pit < consecutiveBackwardsSmoothingStepsOnCells_; ++pit )
+         smooth_gs_on_cells_backwards( op, x, b, level );
+
       x.template communicate< Cell, Face >( level );
 
       for ( uint_t pit = 0; pit < consecutiveBackwardsSmoothingStepsOnFaces_; ++pit )
@@ -243,11 +272,13 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
    uint_t                              consecutiveSmoothingStepsOnEdges_;
    uint_t                              consecutiveSmoothingStepsOnFaces_;
    uint_t                              consecutiveSmoothingStepsOnCells_;
+   uint_t                              consecutiveBackwardsSmoothingStepsOnCells_;
    uint_t                              consecutiveBackwardsSmoothingStepsOnVertices_;
    uint_t                              consecutiveBackwardsSmoothingStepsOnEdges_;
    uint_t                              consecutiveBackwardsSmoothingStepsOnFaces_;
    uint_t                              minLevel_;
    uint_t                              maxLevel_;
+   bool backwardIterations_;
 
    /// Smoother for the macro vertices.
    std::shared_ptr< VertexSmoother< OperatorType > > vertex_smoother;

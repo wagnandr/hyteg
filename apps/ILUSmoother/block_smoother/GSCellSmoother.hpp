@@ -53,8 +53,6 @@ void smooth_sor_cell( const std::shared_ptr< PrimitiveStorage >                s
                       real_t                                                   relax,
                       const bool&                                              backwards = false )
 {
-   WALBERLA_UNUSED( backwards );
-
    typedef stencilDirection sd;
 
    vertexdof::macrocell::StencilMap_T operatorData;
@@ -66,21 +64,25 @@ void smooth_sor_cell( const std::shared_ptr< PrimitiveStorage >                s
    auto inverseCenterWeight = 1.0 / operatorData[{ 0, 0, 0 }];
 
    const uint_t rowsizeZ = levelinfo::num_microvertices_per_edge( level );
-   uint_t       rowsizeY, rowsizeX;
 
    // skip level 0 (no interior points)
    if ( level == 0 )
       return;
 
-   for ( uint_t k = 1; k < rowsizeZ - 3; ++k )
+   const int kstart = backwards ? static_cast< int >( rowsizeZ ) - 3 - 1 : 1;
+   const int kdir   = backwards ? -1 : +1;
+
+   for ( int k = kstart; 1 <= k && k < static_cast< int >( rowsizeZ ) - 3; k += kdir )
    {
-      rowsizeY = rowsizeZ - k;
+      const int jstart = backwards ? static_cast< int >( rowsizeZ ) - k - 3 : 1;
+      const int jdir   = backwards ? -1 : +1;
 
-      for ( uint_t j = 1; j < rowsizeY - 2; ++j )
+      for ( int j = jstart; 1 <= j && j < static_cast< int >( rowsizeZ ) - k - 2; j += jdir )
       {
-         rowsizeX = rowsizeY - j;
+         const int istart = backwards ? static_cast< int >( rowsizeZ ) - k - j - 2 : 1;
+         const int idir   = backwards ? -1 : +1;
 
-         for ( uint_t i = 1; i < rowsizeX - 1; ++i )
+         for ( int i = istart; 1 <= i && i < static_cast< int >( rowsizeZ ) - k - j - 1; i += idir )
          {
             assemble_variableStencil_cell( storage, form, cell, level, operatorData, i, j, k );
             inverseCenterWeight = 1.0 / operatorData[{ 0, 0, 0 }];
@@ -120,9 +122,13 @@ class GSCellSmoother : public CellSmoother< OperatorType >
       smooth_sor_cell( storage_, cell, form_, x.getCellDataID(), b.getCellDataID(), level, 1., false );
    }
 
-   void smooth_backwards( const OperatorType&, uint_t, Cell&, const FSFunctionType&, const FSFunctionType& ) override
+   void smooth_backwards( const OperatorType&,
+                          uint_t                level,
+                          Cell&                 cell,
+                          const FSFunctionType& x,
+                          const FSFunctionType& b ) override
    {
-      WALBERLA_ABORT( "not implemented!" );
+      smooth_sor_cell( storage_, cell, form_, x.getCellDataID(), b.getCellDataID(), level, 1., true );
    }
 
  private:

@@ -151,9 +151,13 @@ class GSEdgeSmoother : public EdgeSmoother< OperatorType >
       smooth_sor_edge3D( storage_, edge, form_, x.getEdgeDataID(), b.getEdgeDataID(), level, 1., false );
    }
 
-   void smooth_backwards( const OperatorType&, uint_t, Edge&, const FSFunctionType&, const FSFunctionType& ) override
+   void smooth_backwards( const OperatorType&,
+                          uint_t                level,
+                          Edge&                 edge,
+                          const FSFunctionType& x,
+                          const FSFunctionType& b ) override
    {
-      WALBERLA_ABORT( "not implemented!" );
+      smooth_sor_edge3D( storage_, edge, form_, x.getEdgeDataID(), b.getEdgeDataID(), level, 1., true );
    }
 
  private:

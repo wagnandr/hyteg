@@ -62,8 +62,6 @@ void smooth_sor_face3D( const std::shared_ptr< PrimitiveStorage >&              
                         real_t                                                   relax,
                         const bool&                                              backwards = false )
 {
-   WALBERLA_UNUSED( backwards );
-
    vertexdof::macroface::StencilMap_T opr_data;
 
    auto rhs = face.getData( rhsId )->getPointer( level );
@@ -79,56 +77,66 @@ void smooth_sor_face3D( const std::shared_ptr< PrimitiveStorage >&              
    auto invCenterWeight = 1.0 / centerWeight;
 
    // todo loop ij
-   for ( const auto& idxIt : vertexdof::macroface::Iterator( level, 1 ) )
+   // for ( const auto& idxIt : vertexdof::macroface::Iterator( level, 1 ) )
+   const int ydir   = backwards ? -1 : 1;
+   const int ystart = backwards ? static_cast< int >( levelinfo::num_microvertices_per_edge( level ) ) - 2 : 1;
+   for ( int y = ystart; 1 <= y && y < static_cast< int >( levelinfo::num_microvertices_per_edge( level ) ) - 1; y += ydir )
    {
-      real_t tmp = rhs[vertexdof::macroface::index( level, idxIt.x(), idxIt.y() )];
+      const int xdir   = backwards ? -1 : 1;
+      const int xstart = backwards ? static_cast< int >( levelinfo::num_microvertices_per_edge( level ) ) - 1 - y : 1;
 
-      assemble_variableStencil_face3D( storage, face, form, opr_data, level, idxIt.x(), idxIt.y() );
-      centerWeight = real_c( 0 );
-
-      for ( uint_t neighborCellIdx = 0; neighborCellIdx < face.getNumNeighborCells(); neighborCellIdx++ )
+      for ( int x = xstart; 1 <= x && x < static_cast< int >( levelinfo::num_microvertices_per_edge( level ) ) - y; x += xdir )
       {
-         centerWeight += opr_data[neighborCellIdx][{ 0, 0, 0 }];
-      }
+         real_t tmp = rhs[vertexdof::macroface::index( level, uint_c( x ), uint_c( y ) )];
 
-      invCenterWeight = 1.0 / centerWeight;
+         assemble_variableStencil_face3D( storage, face, form, opr_data, level, x, y );
+         centerWeight = real_c( 0 );
 
-      for ( uint_t neighborCellIdx = 0; neighborCellIdx < face.getNumNeighborCells(); neighborCellIdx++ )
-      {
-         auto neighborCell = storage->getCell( face.neighborCells().at( neighborCellIdx ) );
-         auto centerIndexInCell =
-             vertexdof::macroface::getIndexInNeighboringMacroCell( idxIt, face, neighborCellIdx, *storage, level );
-
-         for ( auto stencilIt : opr_data[neighborCellIdx] )
+         for ( uint_t neighborCellIdx = 0; neighborCellIdx < face.getNumNeighborCells(); neighborCellIdx++ )
          {
-            if ( stencilIt.first == indexing::IndexIncrement( { 0, 0, 0 } ) )
-               continue;
-
-            auto weight               = stencilIt.second;
-            auto leafIndexInMacroCell = centerIndexInCell + stencilIt.first;
-            auto leafIndexInMacroFace = vertexdof::macrocell::getIndexInNeighboringMacroFace(
-                leafIndexInMacroCell, *neighborCell, neighborCell->getLocalFaceID( face.getID() ), *storage, level );
-
-            uint_t leafArrayIndexInMacroFace;
-
-            if ( leafIndexInMacroFace.z() == 0 )
-            {
-               leafArrayIndexInMacroFace =
-                   vertexdof::macroface::index( level, leafIndexInMacroFace.x(), leafIndexInMacroFace.y() );
-            }
-            else
-            {
-               WALBERLA_ASSERT_EQUAL( leafIndexInMacroFace.z(), 1 );
-               leafArrayIndexInMacroFace =
-                   vertexdof::macroface::index( level, leafIndexInMacroFace.x(), leafIndexInMacroFace.y(), neighborCellIdx );
-            }
-
-            tmp -= weight * dst[leafArrayIndexInMacroFace];
+            centerWeight += opr_data[neighborCellIdx][{ 0, 0, 0 }];
          }
-      }
 
-      dst[vertexdof::macroface::index( level, idxIt.x(), idxIt.y() )] =
-          ( 1.0 - relax ) * dst[vertexdof::macroface::index( level, idxIt.x(), idxIt.y() )] + relax * tmp * invCenterWeight;
+         invCenterWeight = 1.0 / centerWeight;
+
+         for ( uint_t neighborCellIdx = 0; neighborCellIdx < face.getNumNeighborCells(); neighborCellIdx++ )
+         {
+            auto neighborCell      = storage->getCell( face.neighborCells().at( neighborCellIdx ) );
+            auto centerIndexInCell = vertexdof::macroface::getIndexInNeighboringMacroCell(
+                indexing::Index( uint_c( x ), uint_c( y ), 0 ), face, neighborCellIdx, *storage, level );
+
+            for ( auto stencilIt : opr_data[neighborCellIdx] )
+            {
+               if ( stencilIt.first == indexing::IndexIncrement( { 0, 0, 0 } ) )
+                  continue;
+
+               auto weight               = stencilIt.second;
+               auto leafIndexInMacroCell = centerIndexInCell + stencilIt.first;
+               auto leafIndexInMacroFace = vertexdof::macrocell::getIndexInNeighboringMacroFace(
+                   leafIndexInMacroCell, *neighborCell, neighborCell->getLocalFaceID( face.getID() ), *storage, level );
+
+               uint_t leafArrayIndexInMacroFace;
+
+               if ( leafIndexInMacroFace.z() == 0 )
+               {
+                  leafArrayIndexInMacroFace =
+                      vertexdof::macroface::index( level, leafIndexInMacroFace.x(), leafIndexInMacroFace.y() );
+               }
+               else
+               {
+                  WALBERLA_ASSERT_EQUAL( leafIndexInMacroFace.z(), 1 );
+                  leafArrayIndexInMacroFace =
+                      vertexdof::macroface::index( level, leafIndexInMacroFace.x(), leafIndexInMacroFace.y(), neighborCellIdx );
+               }
+
+               tmp -= weight * dst[leafArrayIndexInMacroFace];
+            }
+         }
+
+         dst[vertexdof::macroface::index( level, uint_c( x ), uint_c( y ) )] =
+             ( 1.0 - relax ) * dst[vertexdof::macroface::index( level, uint_c( x ), uint_c( y ) )] +
+             relax * tmp * invCenterWeight;
+      }
    }
 }
 
@@ -151,9 +159,10 @@ class GSFaceSmoother : public FaceSmoother< OperatorType >
       smooth_sor_face3D( storage_, face, form_, x.getFaceDataID(), b.getFaceDataID(), level, 1., false );
    }
 
-   virtual void smooth_backwards( const OperatorType&, uint_t, Face&, const FSFunctionType&, const FSFunctionType& )
+   virtual void
+       smooth_backwards( const OperatorType&, uint_t level, Face& face, const FSFunctionType& x, const FSFunctionType& b )
    {
-      WALBERLA_ABORT( "not implemented!" );
+      smooth_sor_face3D( storage_, face, form_, x.getFaceDataID(), b.getFaceDataID(), level, 1., true );
    }
 
  private:
