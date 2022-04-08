@@ -72,16 +72,20 @@ std::shared_ptr< hyteg::Solver< OperatorType > >
           op.getStorage(), op.getMinLevel(), op.getMaxLevel() );
 
       // cell ilu
-      /*
       auto cell_smoother = std::make_shared< hyteg::P1LDLTInplaceCellSmoother< OperatorType, FormType > >(
           op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form );
       cell_smoother->init();
       eigen_smoother->setCellSmoother( cell_smoother );
-       */
 
+      // eigen_smoother->setConsecutiveSmoothingStepsOnEdges(10);
+      // eigen_smoother->setConsecutiveSmoothingStepsOnFaces(10);
+      // eigen_smoother->setConsecutiveSmoothingStepsOnVertices(10);
+
+      /*
       auto cell_smoother = std::make_shared< hyteg::GSCellSmoother< OperatorType, FormType > >(
           op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form );
       eigen_smoother->setCellSmoother( cell_smoother );
+      */
 
       auto face_smoother = std::make_shared< hyteg::GSFaceSmoother< OperatorType, FormType > > (op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form);
       eigen_smoother->setFaceSmoother( face_smoother );
@@ -345,6 +349,7 @@ int main( int argc, char** argv )
       hyteg::VTKOutput vtkOutput( "./output", "ILUSmoother3D", storage );
       vtkOutput.add( u );
       vtkOutput.add( residual );
+      vtkOutput.add( error );
       vtkOutput.add( f );
       vtkOutput.add( solution );
       vtkOutput.write( maxLevel, 0 );

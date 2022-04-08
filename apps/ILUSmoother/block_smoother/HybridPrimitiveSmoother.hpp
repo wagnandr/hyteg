@@ -23,6 +23,7 @@
 #include <utility>
 
 #include "PrimitiveSmoothers.hpp"
+#include "P1LDLTInplaceCellSmoother.hpp"
 
 namespace hyteg {
 
@@ -167,6 +168,8 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
 
    void smooth_gs_on_cells( const OperatorType& op, const FunctionType& x, const FunctionType& b, const uint_t level )
    {
+      cell_smoother->preSmooth(op, level, x, b);
+
       for ( auto& it : storage_->getCells() )
       {
          Cell& cell = *it.second;
@@ -178,6 +181,8 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
             cell_smoother->smooth( op, level, cell, x, b );
          }
       }
+
+      cell_smoother->postSmooth(op, level, x, b);
    }
 
    void solve( const OperatorType& op, const FunctionType& x, const FunctionType& b, const walberla::uint_t level ) override
@@ -189,6 +194,9 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
       b.template communicate< Vertex, Edge >( level );
       b.template communicate< Edge, Face >( level );
       b.template communicate< Face, Cell >( level );
+      b.template communicate< Cell, Face >( level );
+      b.template communicate< Face, Edge >( level );
+      b.template communicate< Edge, Vertex >( level );
 
       x.template communicate< Cell, Face >( level );
       x.template communicate< Face, Edge >( level );
@@ -198,10 +206,6 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
          smooth_gs_on_vertices( op, x, b, level );
 
       x.template communicate< Vertex, Edge >( level );
-
-      // these are necessary for our block-vertex smoother:
-      x.template communicate< Edge, Face >( level );
-      x.template communicate< Face, Edge >( level );
 
       for ( uint_t it = 0; it < consecutiveSmoothingStepsOnEdges_; ++it )
          smooth_gs_on_edges( op, x, b, level );

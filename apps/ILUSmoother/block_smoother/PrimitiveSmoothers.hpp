@@ -79,6 +79,10 @@ class CellSmoother
 
    virtual ~CellSmoother() = default;
 
+   virtual void preSmooth( const OperatorType&, uint_t, const FSFunctionType&, const FSFunctionType& ) {};
+
+   virtual void postSmooth( const OperatorType&, uint_t, const FSFunctionType&, const FSFunctionType& ) {};
+
    virtual void smooth( const OperatorType&, uint_t level, Cell&, const FSFunctionType& x, const FSFunctionType& b ) = 0;
 
    virtual void

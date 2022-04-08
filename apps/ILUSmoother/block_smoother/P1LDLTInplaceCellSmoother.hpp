@@ -242,6 +242,23 @@ void factorize_matrix( FormType& form, uint_t level, Cell& cell, const Factoriza
             const real_t a_se  = a_stencil[SD::VERTEX_SE];
             const real_t a_c   = a_stencil[SD::VERTEX_C];
 
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y, z - 1 ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( a_bc, 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y - 1, z ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( a_s, 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x - 1, y + 1, z - 1 ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( a_bnw, 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x + 1, y, z - 1 ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( a_be, 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x - 1, y, z ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( a_w, 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y + 1, z - 1 ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( a_bn, 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x + 1, y - 1, z ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( a_se, 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y, z ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( a_c, 0. );
+
             // beta_bc:
             real_t beta_bc = a_bc / gamma[SD::VERTEX_C][fidx( x, y )];
             // beta_s:
@@ -283,6 +300,23 @@ void factorize_matrix( FormType& form, uint_t level, Cell& cell, const Factoriza
             beta_c -= beta_se * beta_se * beta[SD::VERTEX_C][fidx( x + 1, y - 1 )];
             beta_c -= beta_s * beta_s * beta[SD::VERTEX_C][fidx( x, y - 1 )];
             beta_c -= beta_w * beta_w * beta[SD::VERTEX_C][fidx( x - 1, y )];
+
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y, z - 1 ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( beta_bc, 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y - 1, z ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( beta_s, 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x - 1, y + 1, z - 1 ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( beta_bnw, 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x + 1, y, z - 1 ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( beta_be, 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x - 1, y, z ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( beta_w, 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y + 1, z - 1 ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( beta_bn, 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x + 1, y - 1, z ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( beta_se, 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y, z ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( beta_c, 0. );
 
             // write back into beta:
             beta[SD::VERTEX_BC][fidx( x, y )]  = beta_bc;
@@ -350,6 +384,24 @@ void apply_substitutions( LStencilProvider&   get_l_stencil,
          {
             get_l_stencil( x, y, z, l_stencil );
             u[cidx( x, y, z, SD::VERTEX_C )] = b[cidx( x, y, z, SD::VERTEX_C )];
+
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y, z - 1 ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[SD::VERTEX_BC], 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y - 1, z ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[SD::VERTEX_S], 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x - 1, y + 1, z - 1 ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[SD::VERTEX_BNW], 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x + 1, y, z - 1 ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[SD::VERTEX_BE], 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x - 1, y, z ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[SD::VERTEX_W], 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y + 1, z - 1 ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[SD::VERTEX_BN], 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x + 1, y - 1, z ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[SD::VERTEX_SE], 0. );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y, z ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[SD::VERTEX_C], 0. );
+
             for ( auto d : lowerDirections )
             {
                u[cidx( x, y, z, SD::VERTEX_C )] -= l_stencil[d] * u[cidx( x, y, z, d )];
@@ -381,30 +433,44 @@ void apply_substitutions( LStencilProvider&   get_l_stencil,
          {
             // E
             get_l_stencil( x + 1, y, z, l_stencil );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x + 1, y, z ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[opposite( SD::VERTEX_E )], 0. );
             u[cidx( x, y, z, SD::VERTEX_C )] -= l_stencil[opposite( SD::VERTEX_E )] * u[cidx( x, y, z, SD::VERTEX_E )];
 
             // N
             get_l_stencil( x, y + 1, z, l_stencil );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y + 1, z ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[opposite( SD::VERTEX_N )], 0. );
             u[cidx( x, y, z, SD::VERTEX_C )] -= l_stencil[opposite( SD::VERTEX_N )] * u[cidx( x, y, z, SD::VERTEX_N )];
 
             // NW
             get_l_stencil( x - 1, y + 1, z, l_stencil );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x - 1, y + 1, z ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[opposite( SD::VERTEX_NW )], 0. );
             u[cidx( x, y, z, SD::VERTEX_C )] -= l_stencil[opposite( SD::VERTEX_NW )] * u[cidx( x, y, z, SD::VERTEX_NW )];
 
             // TSE
             get_l_stencil( x + 1, y - 1, z + 1, l_stencil );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x + 1, y - 1, z + 1 ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[opposite( SD::VERTEX_TSE )], 0. );
             u[cidx( x, y, z, SD::VERTEX_C )] -= l_stencil[opposite( SD::VERTEX_TSE )] * u[cidx( x, y, z, SD::VERTEX_TSE )];
 
             // TS
             get_l_stencil( x, y - 1, z + 1, l_stencil );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y - 1, z + 1 ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[opposite( SD::VERTEX_TS )], 0. );
             u[cidx( x, y, z, SD::VERTEX_C )] -= l_stencil[opposite( SD::VERTEX_TS )] * u[cidx( x, y, z, SD::VERTEX_TS )];
 
             // TC
             get_l_stencil( x, y, z + 1, l_stencil );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y, z + 1 ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[opposite( SD::VERTEX_TC )], 0. );
             u[cidx( x, y, z, SD::VERTEX_C )] -= l_stencil[opposite( SD::VERTEX_TC )] * u[cidx( x, y, z, SD::VERTEX_TC )];
 
             // TW
             get_l_stencil( x - 1, y, z + 1, l_stencil );
+//            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x - 1, y, z + 1 ) ) )
+//               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[opposite( SD::VERTEX_TW )], 0. );
             u[cidx( x, y, z, SD::VERTEX_C )] -= l_stencil[opposite( SD::VERTEX_TW )] * u[cidx( x, y, z, SD::VERTEX_TW )];
          }
       }
@@ -496,9 +562,9 @@ class LDLTPolynomials
          polynomials_.emplace( d, basis_ );
    }
 
-   inline Polynomial& getPolynomial( stencilDirection direction ) { return polynomials_.at(direction); }
+   inline Polynomial& getPolynomial( stencilDirection direction ) { return polynomials_.at( direction ); }
 
-   inline const Polynomial& operator[]( stencilDirection direction ) const { return polynomials_.at(direction); }
+   inline const Polynomial& operator[]( stencilDirection direction ) const { return polynomials_.at( direction ); }
 
    [[nodiscard]] inline std::array< uint_t, 3 > getDegrees() const { return basis_.getDegrees(); }
 
@@ -571,23 +637,23 @@ class Interpolators
    {
       Basis basis( degreeX, degreeY, degreeZ );
       for ( auto d : lowerDirectionsAndCenter )
-         interpolators.emplace(d, basis );
+         interpolators.emplace( d, basis );
    }
 
-   Interpolator3D& operator()( SD direction ) { return interpolators.at(direction); }
+   Interpolator3D& operator()( SD direction ) { return interpolators.at( direction ); }
 
    void addStencil( const Point3D& p, const std::map< SD, real_t >& stencil )
    {
       for ( auto d : lowerDirectionsAndCenter )
-         interpolators.at(d).addInterpolationPoint( p, stencil.at( d ) );
+         interpolators.at( d ).addInterpolationPoint( p, stencil.at( d ) );
    }
 
-   void addValue( const Point3D& p, SD d, real_t v ) { interpolators.at(d).addInterpolationPoint( p, v ); }
+   void addValue( const Point3D& p, SD d, real_t v ) { interpolators.at( d ).addInterpolationPoint( p, v ); }
 
    void interpolate( LDLTPolynomials& poly )
    {
       for ( auto d : lowerDirectionsAndCenter )
-         interpolators.at(d).interpolate( poly.getPolynomial( d ) );
+         interpolators.at( d ).interpolate( poly.getPolynomial( d ) );
    }
 
  private:
@@ -1223,17 +1289,35 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
 
    const static bool useBoundaryCorrection = false;
 
-   void smooth( const OperatorType&                   A,
-                uint_t                                level,
-                Cell&                                 cell,
-                const typename OperatorType::srcType& u,
-                const typename OperatorType::dstType& b ) override
+   void preSmooth( const OperatorType&                   A,
+                   uint_t                                level,
+                   const typename OperatorType::srcType& u,
+                   const typename OperatorType::dstType& b ) override
    {
       tmp1_.assign( { 1. }, { u }, level, DirichletBoundary );
       A.apply( u, tmp1_, level, flag_ );
       tmp1_.assign( { 1., -1. }, { b, tmp1_ }, level, flag_ );
-      smooth_apply( A, level, cell, tmp2_, tmp1_ );
+
+      tmp1_.template communicate< Vertex, Edge >( level );
+      tmp1_.template communicate< Edge, Face >( level );
+      tmp1_.template communicate< Face, Cell >( level );
+   }
+
+   void postSmooth( const OperatorType&,
+                    uint_t                                level,
+                    const typename OperatorType::srcType& u,
+                    const typename OperatorType::dstType& ) override
+   {
       u.assign( { 1., 1. }, { tmp2_, u }, level, flag_ );
+   }
+
+   void smooth( const OperatorType&                   A,
+                uint_t                                level,
+                Cell&                                 cell,
+                const typename OperatorType::srcType&,
+                const typename OperatorType::dstType& ) override
+   {
+      smooth_apply( A, level, cell, tmp2_, tmp1_ );
    }
 
    void factorize_matrix_inplace( uint_t level, Cell& cell, FormType& form, uint_t skipLevel )
@@ -1425,17 +1509,35 @@ class P1LDLTInplaceCellSmoother : public CellSmoother< OperatorType >
       }
    }
 
-   void smooth( const OperatorType&                   A,
-                uint_t                                level,
-                Cell&                                 cell,
-                const typename OperatorType::srcType& u,
-                const typename OperatorType::dstType& b ) override
+   void preSmooth( const OperatorType&                   A,
+                   uint_t                                level,
+                   const typename OperatorType::srcType& u,
+                   const typename OperatorType::dstType& b ) override
    {
       tmp1_.assign( { 1. }, { u }, level, DirichletBoundary );
       A.apply( u, tmp1_, level, flag_ );
       tmp1_.assign( { 1., -1. }, { b, tmp1_ }, level, flag_ );
-      smooth_apply( A, level, cell, tmp2_, tmp1_ );
+
+      // tmp1_.template communicate< Vertex, Edge >( level );
+      // tmp1_.template communicate< Edge, Face >( level );
+      // tmp1_.template communicate< Face, Cell >( level );
+   }
+
+   void postSmooth( const OperatorType&,
+                    uint_t                                level,
+                    const typename OperatorType::srcType& u,
+                    const typename OperatorType::dstType& ) override
+   {
       u.assign( { 1., 1. }, { tmp2_, u }, level, flag_ );
+   }
+
+   void smooth( const OperatorType& A,
+                uint_t              level,
+                Cell&               cell,
+                const typename OperatorType::srcType&,
+                const typename OperatorType::dstType& ) override
+   {
+      smooth_apply( A, level, cell, tmp2_, tmp1_ );
    }
 
    void factorize_matrix_inplace( uint_t level, Cell& cell, FormType& form )

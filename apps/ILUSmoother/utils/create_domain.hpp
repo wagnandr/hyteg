@@ -70,7 +70,10 @@ std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::
    {
       const double    top_z = parameters.getParameter< real_t >( "tetrahedron_height" );
       hyteg::MeshInfo meshInfo =
-          hyteg::MeshInfo::meshCuboid( hyteg::Point3D( { 0, 0, 0 } ), hyteg::Point3D( { 1, 1, top_z } ), 1, 1, 1 );
+         hyteg::MeshInfo::meshCuboid( hyteg::Point3D( { 0, 0, 0 } ), hyteg::Point3D( { 1, 1, top_z } ), 1, 1, 1 );
+         // hyteg::MeshInfo::meshSymmetricCuboid( hyteg::Point3D( { 0, 0, 0 } ), hyteg::Point3D( { 1, 1, top_z } ), 1, 1, 1 );
+      // hyteg::MeshInfo::fromGmshFile("../../data/meshes/3D/pyramid_2el.msh");
+      // hyteg::MeshInfo::fromGmshFile("../../data/meshes/3D/tet_1el.msh");
 
       auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
           meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
