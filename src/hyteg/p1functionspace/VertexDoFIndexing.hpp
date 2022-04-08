@@ -276,6 +276,8 @@ typedef std::map< uint_t, std::map< indexing::IndexIncrement, real_t > > Stencil
 
 namespace macrocell {
 
+bool isVertexOnBoundary( const uint_t& level, const hyteg::indexing::Index& idx );
+
 /// Index of a vertex DoF on a macro cell.
 uint_t index( const uint_t& level, const uint_t& x, const uint_t& y, const uint_t& z );
 

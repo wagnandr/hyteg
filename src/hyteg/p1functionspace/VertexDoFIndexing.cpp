@@ -406,6 +406,30 @@ BoundaryIterator::BoundaryIterator( const uint_t&                               
 
 namespace macrocell {
 
+bool isVertexOnBoundary( const uint_t& level, const hyteg::indexing::Index& idx )
+{
+   if ( idx.row() == 0 )
+   {
+      return true;
+   }
+   else if ( idx.col() == 0 )
+   {
+      return true;
+   }
+   else if ( idx.dep() == 0 )
+   {
+      return true;
+   }
+   else if ( ( idx.row() + idx.col() + idx.dep() ) == ( hyteg::levelinfo::num_microvertices_per_edge( level ) - 1 ) )
+   {
+      return true;
+   }
+   else
+   {
+      return false;
+   }
+}
+
 uint_t index( const uint_t& level, const uint_t& x, const uint_t& y, const uint_t& z )
 {
    return hyteg::indexing::macroCellIndex( levelinfo::num_microvertices_per_edge( level ), x, y, z );
