@@ -84,8 +84,6 @@ void smooth_sor_edge3D( const std::shared_ptr< PrimitiveStorage >               
    const auto stencilIdxC = vertexdof::macroedge::stencilIndexOnEdge( sD::VERTEX_C );
    const auto stencilIdxE = vertexdof::macroedge::stencilIndexOnEdge( sD::VERTEX_E );
 
-   auto invCenterWeight = 1.0 / opr_data[stencilIdxC];
-
    real_t tmp;
 
    const int start = backwards ? (int) rowsize - 2 : 1;
@@ -96,8 +94,9 @@ void smooth_sor_edge3D( const std::shared_ptr< PrimitiveStorage >               
    {
       const uint_t i = uint_c( ii );
 
+      form.setGeometryMap( edge.getGeometryMap() );
       assemble_variableStencil_edge( storage, level, edge, form, opr_data, i );
-      invCenterWeight = 1.0 / opr_data[stencilIdxC];
+      auto invCenterWeight = 1.0 / opr_data[stencilIdxC];
 
       const auto dofIdxW = vertexdof::macroedge::indexFromVertex( level, i, sD::VERTEX_W );
       const auto dofIdxC = vertexdof::macroedge::indexFromVertex( level, i, sD::VERTEX_C );

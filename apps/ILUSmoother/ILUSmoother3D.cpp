@@ -22,6 +22,7 @@
 #include <random>
 #include <unordered_map>
 #include <utility>
+#include <hyteg/primitivestorage/Visualization.hpp>
 
 #include "core/DataTypes.h"
 #include "core/Environment.h"
@@ -48,6 +49,7 @@
 #include "block_smoother/GSCellSmoother.hpp"
 #include "block_smoother/GSEdgeSmoother.hpp"
 #include "block_smoother/GSFaceSmoother.hpp"
+#include "block_smoother/GSVertexSmoother.hpp"
 #include "block_smoother/HybridPrimitiveSmoother.hpp"
 #include "block_smoother/P1LDLTInplaceCellSmoother.hpp"
 #include "utils/create_domain.hpp"
@@ -121,6 +123,10 @@ std::shared_ptr< hyteg::Solver< OperatorType > >
           op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form );
       eigen_smoother->setEdgeSmoother( edge_smoother );
 
+      auto vertex_smoother = std::make_shared< hyteg::GSVertexSmoother< OperatorType, FormType > >(
+          op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form );
+      eigen_smoother->setVertexSmoother( vertex_smoother );
+
       return eigen_smoother;
    }
    else if ( smoother_type == "gs" )
@@ -156,6 +162,7 @@ int main( int argc, char** argv )
    const uint_t max_coarse_iter  = parameters.getParameter< uint_t >( "max_coarse_iter" );
    const real_t mg_tolerance     = parameters.getParameter< real_t >( "mg_tolerance" );
    const real_t coarse_tolerance = parameters.getParameter< real_t >( "coarse_tolerance" );
+   const std::string domain = parameters.getParameter< std::string >( "domain" );
 
    const uint_t asymptoticConvergenceStartIter = parameters.getParameter< uint_t >( "asymptotic_convergence_start_iter" );
 
@@ -188,8 +195,9 @@ int main( int argc, char** argv )
 
    std::function< real_t( const hyteg::Point3D& ) > boundaryConditions;
    std::function< real_t( const hyteg::Point3D& ) > rhsFunctional;
+   std::function< real_t( const hyteg::Point3D& ) > kappa;
 
-   if ( solution_type == "sines" && !powermethod )
+   if ( solution_type == "sines" && !powermethod && domain != "two_layer_cube" )
    {
       constexpr uint_t k_x = 4;
       constexpr uint_t k_y = 2;
@@ -202,6 +210,17 @@ int main( int argc, char** argv )
          return ( k_x * k_x + k_y * k_y ) * 4 * M_PI * M_PI * std::sin( 2 * k_x * M_PI * x[0] ) *
                 std::cos( 2 * k_y * M_PI * x[1] );
       };
+   }
+   else if ( domain == "two_layer_cube" && !powermethod)
+   {
+      const real_t kappa_lower = parameters.getParameter< real_t >( "kappa_lower" );
+      const real_t kappa_upper = parameters.getParameter< real_t >( "kappa_upper" );
+
+      boundaryConditions = []( const hyteg::Point3D& x ) {
+         return x[2];
+      };
+
+      rhsFunctional = []( const hyteg::Point3D& x ) { return 0; };
    }
    else if ( solution_type == "zero" || powermethod )
    {
@@ -230,7 +249,8 @@ int main( int argc, char** argv )
 
    using OperatorType = hyteg::P1ConstantLaplaceOperator;
    // using OperatorType = hyteg::P1BlendingLaplaceOperator;
-   using FormType = hyteg::forms::p1_diffusion_blending_q1;
+   // using FormType = hyteg::forms::p1_diffusion_blending_q1;
+   using FormType = P1FenicsForm< p1_diffusion_cell_integral_0_otherwise, p1_tet_diffusion_cell_integral_0_otherwise >;
    FormType     form;
    OperatorType laplaceOperator( storage, minLevel, maxLevel );
 
@@ -363,6 +383,8 @@ int main( int argc, char** argv )
       vtkOutput.add( f );
       vtkOutput.add( solution );
       vtkOutput.write( maxLevel, 0 );
+
+      writeDomainPartitioningVTK( storage, "./output", "ILUSmoother3D" );
    }
 
    if ( parameters.getParameter< bool >( "csvOutput" ) )
