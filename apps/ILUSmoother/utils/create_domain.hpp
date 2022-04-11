@@ -37,6 +37,15 @@ std::vector< uint_t > createPermutation( uint_t permutationNumber )
    return order;
 }
 
+void printPermutations()
+{
+   for ( uint_t permutationNumber = 0; permutationNumber < 24; ++permutationNumber )
+   {
+      auto order = createPermutation(permutationNumber);
+      WALBERLA_LOG_INFO_ON_ROOT(permutationNumber << " " << order[0] << " " << order[1] << " " << order[2] << " " << order[3]);
+   }
+}
+
 void executePermutation( std::array< hyteg::Point3D, 4 >& vertices, const std::vector< uint_t >& order )
 {
    const auto p0 = vertices[0];

@@ -21,6 +21,8 @@
 #pragma once
 
 #include <functional>
+#include <vector>
+#include <array>
 
 #include "core/DataTypes.h"
 
@@ -46,6 +48,16 @@ class StoragePermutator
 
  private:
    void permutate( SetupPrimitiveStorage& setup, Cell& cell, std::array< uint_t, 4 > permutation );
+
+   std::array< real_t, 3> get_triangle_angles(const Cell& cell, const std::vector< uint_t >& vertexIds) const;
+   real_t get_triangle_area(const Cell& cell, const std::vector< uint_t >& vertexIds) const;
+   real_t getHeight(const Cell& cell, uint_t id) const;
+
+   uint_t getMaxAreaTriangle(const Cell& cell) const;
+   uint_t getMaxAngleTriangle(const Cell& cell) const;
+   uint_t getMinAngleTriangle(const Cell& cell) const;
+   uint_t getMinHeightBaseTriangle(const Cell& cell) const;
+   uint_t getMaxHeightBaseTriangle(const Cell& cell) const;
 };
 
 } // namespace hyteg

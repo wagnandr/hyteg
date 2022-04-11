@@ -147,6 +147,8 @@ int main( int argc, char** argv )
    walberla::Config::BlockHandle parameters = cfg->getOneBlock( "Parameters" );
    parameters.listParameters();
 
+   printPermutations();
+
    const bool   powermethod      = parameters.getParameter< bool >( "powermethod" );
    const uint_t minLevel         = parameters.getParameter< uint_t >( "minLevel" );
    const uint_t maxLevel         = parameters.getParameter< uint_t >( "maxLevel" );
