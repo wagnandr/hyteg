@@ -122,11 +122,9 @@ std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::
       auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
           meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
       setupStorage->setMeshBoundaryFlagsOnBoundary( 1, 0, true );
-      /*
       setupStorage->setMeshBoundaryFlagsByCentroidLocation( 2, [](const hyteg::Point3D & p){
          return ((p[0] <= 1e-16 || p[0] >= 1-1e-16) || (p[1] <= 1e-16 || p[1] >= 1-1e-16) ) && (p[2] > 1e-16 && p[2] < 1 - 1e-16);
       });
-       */
 
       return setupStorage;
    }

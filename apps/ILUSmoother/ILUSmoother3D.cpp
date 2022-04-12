@@ -19,10 +19,10 @@
  */
 #include <Eigen/SparseLU>
 #include <cmath>
+#include <hyteg/primitivestorage/Visualization.hpp>
 #include <random>
 #include <unordered_map>
 #include <utility>
-#include <hyteg/primitivestorage/Visualization.hpp>
 
 #include "core/DataTypes.h"
 #include "core/Environment.h"
@@ -155,14 +155,14 @@ int main( int argc, char** argv )
 
    printPermutations();
 
-   const bool   powermethod      = parameters.getParameter< bool >( "powermethod" );
-   const uint_t minLevel         = parameters.getParameter< uint_t >( "minLevel" );
-   const uint_t maxLevel         = parameters.getParameter< uint_t >( "maxLevel" );
-   const uint_t max_outer_iter   = parameters.getParameter< uint_t >( "max_outer_iter" );
-   const uint_t max_coarse_iter  = parameters.getParameter< uint_t >( "max_coarse_iter" );
-   const real_t mg_tolerance     = parameters.getParameter< real_t >( "mg_tolerance" );
-   const real_t coarse_tolerance = parameters.getParameter< real_t >( "coarse_tolerance" );
-   const std::string domain = parameters.getParameter< std::string >( "domain" );
+   const bool        powermethod      = parameters.getParameter< bool >( "powermethod" );
+   const uint_t      minLevel         = parameters.getParameter< uint_t >( "minLevel" );
+   const uint_t      maxLevel         = parameters.getParameter< uint_t >( "maxLevel" );
+   const uint_t      max_outer_iter   = parameters.getParameter< uint_t >( "max_outer_iter" );
+   const uint_t      max_coarse_iter  = parameters.getParameter< uint_t >( "max_coarse_iter" );
+   const real_t      mg_tolerance     = parameters.getParameter< real_t >( "mg_tolerance" );
+   const real_t      coarse_tolerance = parameters.getParameter< real_t >( "coarse_tolerance" );
+   const std::string domain           = parameters.getParameter< std::string >( "domain" );
 
    const uint_t asymptoticConvergenceStartIter = parameters.getParameter< uint_t >( "asymptotic_convergence_start_iter" );
 
@@ -175,9 +175,9 @@ int main( int argc, char** argv )
 
    const auto setupStorage = createDomain( parameters );
 
-   if (parameters.getParameter< bool >("auto_permutation"))
+   if ( parameters.getParameter< bool >( "auto_permutation" ) )
    {
-      WALBERLA_LOG_INFO_ON_ROOT("applying auto permutation");
+      WALBERLA_LOG_INFO_ON_ROOT( "applying auto permutation" );
       StoragePermutator permutator;
       permutator.permutate_ilu( *setupStorage );
    }
@@ -211,13 +211,27 @@ int main( int argc, char** argv )
                 std::cos( 2 * k_y * M_PI * x[1] );
       };
    }
-   else if ( domain == "two_layer_cube" && !powermethod)
+   else if ( domain == "two_layer_cube" && !powermethod )
    {
       const real_t kappa_lower = parameters.getParameter< real_t >( "kappa_lower" );
       const real_t kappa_upper = parameters.getParameter< real_t >( "kappa_upper" );
+      const real_t height      = parameters.getParameter< real_t >( "tetrahedron_height" );
 
-      boundaryConditions = []( const hyteg::Point3D& x ) {
-         return x[2];
+      const auto height_upper = 1 - height;
+      const auto height_lower = height;
+
+      const double z_m = kappa_upper / height_upper / ( kappa_lower / height_lower + kappa_upper / height_upper );
+
+      boundaryConditions = [height_lower, height_upper, z_m]( const hyteg::Point3D& x ) {
+         const double z = x[2];
+         if ( z < height_lower )
+         {
+            return z_m / height_lower * z;
+         }
+         else
+         {
+            return ( 1 - z_m ) / height_upper * ( z - height_lower ) + z_m;
+         }
       };
 
       rhsFunctional = []( const hyteg::Point3D& x ) { return 0; };
@@ -247,20 +261,38 @@ int main( int argc, char** argv )
                      All ^ DirichletBoundary );
    }
 
-   using OperatorType = hyteg::P1ConstantLaplaceOperator;
+   //using OperatorType = hyteg::P1ConstantLaplaceOperator;
    // using OperatorType = hyteg::P1BlendingLaplaceOperator;
    // using FormType = hyteg::forms::p1_diffusion_blending_q1;
-   using FormType = P1FenicsForm< p1_diffusion_cell_integral_0_otherwise, p1_tet_diffusion_cell_integral_0_otherwise >;
-   FormType     form;
-   OperatorType laplaceOperator( storage, minLevel, maxLevel );
+   //using FormType = P1FenicsForm< p1_diffusion_cell_integral_0_otherwise, p1_tet_diffusion_cell_integral_0_otherwise >;
+   //FormType     form;
+   //OperatorType laplaceOperator( storage, minLevel, maxLevel );
 
+   //using OperatorType = hyteg::P1BlendingLaplaceOperator;
+   using OperatorType = hyteg::P1AffineDivkGradOperator;
    // using OperatorType = P1ElementwiseBlendingDivKGradOperator;
-   // using FormType     = forms::p1_div_k_grad_blending_q3;
-   // auto         kappa2d = []( const Point3D& p ) { return 1.; };
-   // auto         kappa3d = []( const Point3D& p ) { return 1 + p[0] * p[0] * p[0] + p[1] + 10. * p[2] * p[2] * p[2]; };
-   // auto         kappa3d = []( const Point3D& p ) { return 1 + p[0] * p[0] * p[0]; };
-   // FormType     form( kappa3d, kappa2d );
-   // OperatorType laplaceOperator( storage, minLevel, maxLevel, form );
+   //using FormType     = forms::p1_div_k_grad_blending_q3;
+   using FormType = forms::p1_div_k_grad_affine_q3;
+
+   std::function< real_t( const Point3D& ) > kappa2d = []( const Point3D& p ) { return 1.; };
+   std::function< real_t( const Point3D& ) > kappa3d = []( const Point3D& p ) { return 1.; };
+
+   if ( domain == "two_layer_cube" )
+   {
+      const real_t kappa_lower = parameters.getParameter< real_t >( "kappa_lower" );
+      const real_t kappa_upper = parameters.getParameter< real_t >( "kappa_upper" );
+      const real_t height      = parameters.getParameter< real_t >( "tetrahedron_height" );
+
+      kappa3d = [=]( const Point3D& p ) {
+         if ( p[2] <= height )
+            return kappa_lower;
+         else
+            return kappa_upper;
+      };
+   }
+
+   FormType     form( kappa3d, kappa2d );
+   OperatorType laplaceOperator( storage, minLevel, maxLevel, form );
 
    std::shared_ptr< hyteg::Solver< OperatorType > > smoother =
        createSmoother3D< OperatorType, FormType >( parameters, laplaceOperator, form );
