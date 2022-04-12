@@ -246,10 +246,8 @@ class HybridPrimitiveSmoother : public Solver< OperatorType >
       for ( uint_t pit = 0; pit < consecutiveSmoothingStepsOnCells_; ++pit )
          smooth_gs_on_cells( op, x, b, level );
 
-      /*
       for ( uint_t pit = 0; pit < consecutiveBackwardsSmoothingStepsOnCells_; ++pit )
          smooth_gs_on_cells_backwards( op, x, b, level );
-         */
 
       x.template communicate< Cell, Face >( level );
 

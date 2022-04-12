@@ -83,9 +83,9 @@ void smooth_sor_face3D( const std::shared_ptr< PrimitiveStorage >&              
    for ( int y = ystart; 1 <= y && y < static_cast< int >( levelinfo::num_microvertices_per_edge( level ) ) - 1; y += ydir )
    {
       const int xdir   = backwards ? -1 : 1;
-      const int xstart = backwards ? static_cast< int >( levelinfo::num_microvertices_per_edge( level ) ) - 1 - y : 1;
+      const int xstart = backwards ? static_cast< int >( levelinfo::num_microvertices_per_edge( level ) ) - 2 - y : 1;
 
-      for ( int x = xstart; 1 <= x && x < static_cast< int >( levelinfo::num_microvertices_per_edge( level ) ) - y; x += xdir )
+      for ( int x = xstart; 1 <= x && x < static_cast< int >( levelinfo::num_microvertices_per_edge( level ) ) - y - 1; x += xdir )
       {
          real_t tmp = rhs[vertexdof::macroface::index( level, uint_c( x ), uint_c( y ) )];
 
