@@ -268,11 +268,11 @@ int main( int argc, char** argv )
    //FormType     form;
    //OperatorType laplaceOperator( storage, minLevel, maxLevel );
 
-   //using OperatorType = hyteg::P1BlendingLaplaceOperator;
-   using OperatorType = hyteg::P1AffineDivkGradOperator;
-   // using OperatorType = P1ElementwiseBlendingDivKGradOperator;
-   //using FormType     = forms::p1_div_k_grad_blending_q3;
-   using FormType = forms::p1_div_k_grad_affine_q3;
+   // using OperatorType = hyteg::P1BlendingLaplaceOperator;
+   // using OperatorType = hyteg::P1AffineDivkGradOperator;
+   using OperatorType = P1ElementwiseBlendingDivKGradOperator;
+   using FormType     = forms::p1_div_k_grad_blending_q3;
+   //using FormType = forms::p1_div_k_grad_affine_q3;
 
    std::function< real_t( const Point3D& ) > kappa2d = []( const Point3D& p ) { return 1.; };
    std::function< real_t( const Point3D& ) > kappa3d = []( const Point3D& p ) { return 1.; };
@@ -284,10 +284,12 @@ int main( int argc, char** argv )
       const real_t height      = parameters.getParameter< real_t >( "tetrahedron_height" );
 
       kappa3d = [=]( const Point3D& p ) {
-         if ( p[2] <= height )
+         if ( p[2] < height )
             return kappa_lower;
-         else
+         else if (p[2] > height)
             return kappa_upper;
+         else
+            WALBERLA_ABORT("not defined")
       };
    }
 

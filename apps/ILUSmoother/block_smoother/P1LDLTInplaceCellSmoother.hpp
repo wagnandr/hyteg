@@ -229,7 +229,7 @@ void factorize_matrix( FormType& form, uint_t level, Cell& cell, const Factoriza
       {
          for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
          {
-            auto a_stencil = P1Elements::P1Elements3D::calculateStencilInMacroCellForm( { x, y, z }, cell, level, form );
+            auto a_stencil = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { x, y, z }, cell, level, form );
 
             apply_boundary_corrections( x, y, z, N_edge, a_stencil );
 

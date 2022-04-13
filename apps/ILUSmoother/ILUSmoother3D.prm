@@ -22,7 +22,7 @@ Parameters
 
   // for domain tetrahedron;:
   tetrahedron_permutation 0;
-  tetrahedron_height 0.3;
+  tetrahedron_height 0.5;
 
   // domain squished_cube;
   // domain tetrahedron;
@@ -32,18 +32,18 @@ Parameters
   // domain tetrahedron_regular;
   // domain tetrahedron_spade;
 
+  kappa_upper 100.0;
   kappa_lower 1.0;
-  kappa_upper 2.0;
 
   auto_permutation true;
 
   // use PCG with mg preconditioner
-  usePCG false;
+  usePCG true;
 
   // which smoother: hyteg_gs, eigen_ilu, inplace_ldlt
   // smoother_type surrogate_ldlt;
-  // smoother_type inplace_ldlt;
-  smoother_type gs;
+  smoother_type inplace_ldlt;
+  // smoother_type gs;
   // smoother_type cell_gs;
 
   surrogate_degree_x 0;
@@ -51,8 +51,8 @@ Parameters
   surrogate_degree_z 12;
   surrogate_skip_level 4;
 
-  sm_steps_lower_primitives 1;
-  sm_steps_lower_primitives_backward 1;
+  sm_steps_lower_primitives 10;
+  sm_steps_lower_primitives_backward 10;
 
   // damping factor of the smoother
   relax 1.;
