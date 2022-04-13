@@ -33,6 +33,17 @@ def extract_number(key, output):
     return float('nan')
 
 
+def extract_convergence_number(output):
+    regex = r'converged after (.*) iterations'
+
+    match = re.search(regex, output, re.MULTILINE)
+    if match is not None:
+        return int(match.group(1))
+
+    print('Error: Incomplete output')
+    return int('nan')
+
+
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if dataclasses.is_dataclass(o):

@@ -1,0 +1,59 @@
+Parameters
+{
+  minLevel 2;
+  maxLevel 6;
+  max_outer_iter 80;
+  max_coarse_iter 100;
+  mg_tolerance 1e-8;
+  coarse_tolerance 1e-16;
+  vtkOutput true;
+  csvOutput true;
+
+  asymptotic_convergence_start_iter 3;
+
+  num_smoothing_steps 3;
+
+  // replaces the zero initial guess with something random
+  randomInitialGuess false;
+  powermethod true;
+
+  // which solution: zero, sines?
+  solution_type sines;
+
+  // for domain tetrahedron;:
+  tetrahedron_permutation 0;
+  tetrahedron_height 0.3;
+
+  // domain squished_cube;
+  // domain tetrahedron;
+  domain two_layer_cube;
+  // domain tetrahedron_cap;
+  // domain tetrahedron_spindle;
+  // domain tetrahedron_regular;
+  // domain tetrahedron_spade;
+
+  kappa_lower 1.0;
+  kappa_upper 2.0;
+
+  auto_permutation true;
+
+  // use PCG with mg preconditioner
+  usePCG true;
+
+  // which smoother: hyteg_gs, eigen_ilu, inplace_ldlt
+  // smoother_type surrogate_ldlt;
+  // smoother_type inplace_ldlt;
+  smoother_type gs;
+  // smoother_type cell_gs;
+
+  surrogate_degree_x 0;
+  surrogate_degree_y 0;
+  surrogate_degree_z 12;
+  surrogate_skip_level 4;
+
+  sm_steps_lower_primitives 1;
+  sm_steps_lower_primitives_backward 1;
+
+  // damping factor of the smoother
+  relax 1.;
+}
