@@ -2,9 +2,9 @@ Parameters
 {
   minLevel 2;
   maxLevel 6;
-  max_outer_iter 160;
+  max_outer_iter 20;
   max_coarse_iter 100;
-  mg_tolerance 1e-8;
+  mg_tolerance 1e-14;
   coarse_tolerance 1e-16;
   vtkOutput true;
   csvOutput true;
@@ -25,8 +25,8 @@ Parameters
   tetrahedron_height 0.3;
 
   // domain squished_cube;
-  // domain tetrahedron;
-  domain two_layer_cube;
+  domain tetrahedron;
+  // domain two_layer_cube;
   // domain tetrahedron_cap;
   // domain tetrahedron_spindle;
   // domain tetrahedron_regular;
@@ -38,7 +38,7 @@ Parameters
   auto_permutation true;
 
   // use PCG with mg preconditioner
-  usePCG true;
+  usePCG false;
 
   // which smoother: hyteg_gs, eigen_ilu, inplace_ldlt
   // smoother_type surrogate_ldlt;

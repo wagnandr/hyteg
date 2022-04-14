@@ -197,7 +197,7 @@ int main( int argc, char** argv )
    std::function< real_t( const hyteg::Point3D& ) > rhsFunctional;
    std::function< real_t( const hyteg::Point3D& ) > kappa;
 
-   if ( solution_type == "sines" && !powermethod && domain != "two_layer_cube" )
+   if ( solution_type == "sines" && !powermethod && domain != "two_layer_cube" && domain != "two_layer_cube_v2" )
    {
       constexpr uint_t k_x = 4;
       constexpr uint_t k_y = 2;
@@ -232,6 +232,31 @@ int main( int argc, char** argv )
          {
             return ( 1 - z_m ) / height_upper * ( z - height_lower ) + z_m;
          }
+      };
+
+      rhsFunctional = []( const hyteg::Point3D& x ) { return 0; };
+   }
+   else if ( domain == "two_layer_cube_v2" && !powermethod )
+   {
+      const real_t kappa_lower = parameters.getParameter< real_t >( "kappa_lower" );
+      const real_t kappa_upper = parameters.getParameter< real_t >( "kappa_upper" );
+      const real_t height      = parameters.getParameter< real_t >( "tetrahedron_height" );
+
+      const auto height_upper = 1 + height;
+      const auto height_lower = 1.;
+
+      const double z_m = kappa_upper / height_upper / ( kappa_lower / height_lower + kappa_upper / height_upper );
+
+      boundaryConditions = [height_lower, height_upper, z_m]( const hyteg::Point3D& x ) {
+        const double z = x[2];
+        if ( z < height_lower )
+        {
+           return z_m / height_lower * z;
+        }
+        else
+        {
+           return ( 1 - z_m ) / height_upper * ( z - height_lower ) + z_m;
+        }
       };
 
       rhsFunctional = []( const hyteg::Point3D& x ) { return 0; };
@@ -290,6 +315,21 @@ int main( int argc, char** argv )
             return kappa_upper;
          else
             WALBERLA_ABORT("not defined")
+      };
+   }
+   if ( domain == "two_layer_cube_v2" )
+   {
+      const real_t kappa_lower = parameters.getParameter< real_t >( "kappa_lower" );
+      const real_t kappa_upper = parameters.getParameter< real_t >( "kappa_upper" );
+      const real_t height      = parameters.getParameter< real_t >( "tetrahedron_height" );
+
+      kappa3d = [=]( const Point3D& p ) {
+        if ( p[2] < 1. )
+           return kappa_lower;
+        else if (p[2] > 1. )
+           return kappa_upper;
+        else
+         WALBERLA_ABORT("not defined");
       };
    }
 

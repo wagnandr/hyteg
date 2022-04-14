@@ -40,10 +40,10 @@ smoother_types = [gs, ilu_basic]
 if __name__ == '__main__':
     output = []
     kappa_lower = 1.
-    kappa_uppers = [1e-5, 1e0, 1e5]
+    kappa_uppers = [1e0, 1e-5, 1e5]
     heights = [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.025, 0.0125]
-    for smoother in smoother_types:
-        for kappa_upper in kappa_uppers:
+    for kappa_upper in kappa_uppers:
+        for smoother in smoother_types:
             for height in heights:
                 output.append(run_height_mg(smoother, kappa_lower, kappa_upper, height))
                 print(to_json(output))

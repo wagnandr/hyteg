@@ -39,6 +39,6 @@ with open('run_jump_with_height_cg.json')  as f:
     plt.grid(True)
 
     plt.ylabel(r'iterations')
-    plt.xlabel(r'$h_{upper}$')
+    plt.xlabel(r'$h_{lower}$')
     plt.show()
 

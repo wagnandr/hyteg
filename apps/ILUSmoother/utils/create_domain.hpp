@@ -128,6 +128,31 @@ std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::
 
       return setupStorage;
    }
+   else if ( domain == "two_layer_cube_v2" )
+   {
+      const double    top_z = parameters.getParameter< real_t >( "tetrahedron_height" );
+      hyteg::MeshInfo meshInfo =
+          hyteg::MeshInfo::meshCuboid( hyteg::Point3D( { 0, 0, 0 } ), hyteg::Point3D( { 1, 1, 2. } ), 1, 1, 2 );
+      for ( auto& vIt : meshInfo.getVertices() )
+      {
+         hyteg::MeshInfo::Vertex& v = vIt.second;
+         auto                     c = v.getCoordinates();
+
+         if ( c[2] >= 2. - 1e-14 && c[2] <= 2. + 1e-14 )
+         {
+            v.setCoordinates( hyteg::Point3D( { c[0], c[1], 1+top_z } ) );
+         }
+      }
+
+      auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
+          meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
+      setupStorage->setMeshBoundaryFlagsOnBoundary( 1, 0, true );
+      setupStorage->setMeshBoundaryFlagsByCentroidLocation( 2, [top_z](const hyteg::Point3D & p){
+        return ((p[0] <= 1e-16 || p[0] >= 1-1e-16) || (p[1] <= 1e-16 || p[1] >= 1-1e-16) ) && (p[2] > 1e-16 && p[2] < 1+top_z - 1e-16);
+      });
+
+      return setupStorage;
+   }
    else if ( domain == "tetrahedron_spindle" )
    {
       WALBERLA_LOG_INFO_ON_ROOT( "Preparing " << domain << " domain." );

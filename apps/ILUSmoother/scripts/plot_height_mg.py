@@ -5,7 +5,7 @@ from itertools import permutations
 from _shared import spade, spindle, cap, regular
 
 
-with open('run_jump_with_height_mg.json')  as f:
+with open('run_jump_with_height_mg.json') as f:
     data = json.loads(f.read())
     data = data['results']
     gs = 'cell_gs'
@@ -39,6 +39,6 @@ with open('run_jump_with_height_mg.json')  as f:
     plt.grid(True)
 
     plt.ylabel(r'$\rho$')
-    plt.xlabel(r'$h_{upper}$')
+    plt.xlabel(r'$h_{lower}$')
     plt.show()
 

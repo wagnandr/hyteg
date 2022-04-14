@@ -1,8 +1,8 @@
 Parameters
 {
-  minLevel 2;
+  minLevel 3;
   maxLevel 4;
-  max_outer_iter 20;
+  max_outer_iter 10;
   max_coarse_iter 100;
   mg_tolerance 1e-14;
   coarse_tolerance 1e-16;
@@ -22,23 +22,24 @@ Parameters
 
   // for domain tetrahedron;:
   tetrahedron_permutation 0;
-  tetrahedron_height 0.5;
+  tetrahedron_height 0.1;
 
   // domain squished_cube;
+  domain two_layer_cube_v2;
   // domain tetrahedron;
-  domain two_layer_cube;
+  // domain two_layer_cube;
   // domain tetrahedron_cap;
   // domain tetrahedron_spindle;
   // domain tetrahedron_regular;
   // domain tetrahedron_spade;
 
-  kappa_upper 100.0;
+  kappa_upper 1.0;
   kappa_lower 1.0;
 
   auto_permutation true;
 
   // use PCG with mg preconditioner
-  usePCG true;
+  usePCG false;
 
   // which smoother: hyteg_gs, eigen_ilu, inplace_ldlt
   // smoother_type surrogate_ldlt;
