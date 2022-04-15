@@ -761,13 +761,10 @@ void assemble_surrogate_operator( P1Form& form, const Cell& cell, uint_t coarse_
 
    form.setGeometryMap( cell.getGeometryMap() );
 
-   // z inner:
    for ( uint_t z = 1; z <= N_edge - 2; z += 1 )
    {
-      // y inner:
       for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
       {
-         // x inner:
          for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
          {
             uint_t x_tilde = ( x - 1 ) * level_difference + 1;
@@ -783,6 +780,49 @@ void assemble_surrogate_operator( P1Form& form, const Cell& cell, uint_t coarse_
 
             for ( auto d : inter.getAllDirections() )
                inter.addValue( p, d, a_stencil[d] );
+         }
+      }
+   }
+}
+
+template < typename FunctionType >
+void apply_surrogate_operator( LDLTPolynomials&    polynomials,
+                               uint_t              level,
+                               Cell&               cell,
+                               const FunctionType& src_function,
+                               const FunctionType& dst_function )
+{
+   const auto cidx = [level]( uint_t x, uint_t y, uint_t z, SD dir ) {
+      return vertexdof::macrocell::indexFromVertex( level, x, y, z, dir );
+   };
+
+   const auto N_edge = levelinfo::num_microvertices_per_edge( level );
+
+   real_t h = 1. / static_cast< real_t >( levelinfo::num_microedges_per_edge( level ) );
+
+   // unpack u and b
+   auto src = cell.getData( src_function.getCellDataID() )->getPointer( level );
+   auto dst = cell.getData( dst_function.getCellDataID() )->getPointer( level );
+
+   PolyStencil< 15 > poly_stencil( polynomials.getDegrees(), allDirections );
+   poly_stencil.setPolynomial( polynomials );
+
+   std::map< SD, real_t > a_stencil;
+
+   for ( uint_t z = 1; z <= N_edge - 2; z += 1 )
+   {
+      poly_stencil.setZ( h * static_cast< real_t >( z ) );
+      for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
+      {
+         poly_stencil.setY( h * static_cast< real_t >( y ) );
+         poly_stencil.setStartX( h * static_cast< real_t >( 1 - 1 ), h, a_stencil );
+         for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
+         {
+            poly_stencil.incrementEval( a_stencil );
+
+            dst[cidx( x, y, z, SD::VERTEX_C )] = 0;
+            for ( auto d : allDirections )
+               dst[cidx( x, y, z, SD::VERTEX_C )] += a_stencil[d] * src[cidx( x, y, z, d )];
          }
       }
    }
@@ -1251,13 +1291,23 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
                    const typename OperatorType::srcType& u,
                    const typename OperatorType::dstType& b ) override
    {
-      tmp1_.assign( { 1. }, { u }, level, DirichletBoundary );
-      A.apply( u, tmp1_, level, flag_ );
-      tmp1_.assign( { 1., -1. }, { b, tmp1_ }, level, flag_ );
+      //      tmp1_.assign( { 1. }, { u }, level, DirichletBoundary );
+      //      A.apply( u, tmp1_, level, flag_ );
+      //      tmp1_.assign( { 1., -1. }, { b, tmp1_ }, level, flag_ );
+      //
+      //      tmp1_.template communicate< Vertex, Edge >( level );
+      //      tmp1_.template communicate< Edge, Face >( level );
+      //      tmp1_.template communicate< Face, Cell >( level );
 
-      tmp1_.template communicate< Vertex, Edge >( level );
-      tmp1_.template communicate< Edge, Face >( level );
-      tmp1_.template communicate< Face, Cell >( level );
+      tmp1_.assign( { 1. }, { u }, level, DirichletBoundary );
+      for ( auto cit : storage_->getCells() )
+      {
+         Cell& cell        = *cit.second;
+         auto& polynomials = cell.getData( opPolynomialsID_ )->getLevel( level );
+         ldlt::p1::dim3::apply_surrogate_operator( polynomials, level, cell, u, tmp1_ );
+      }
+
+      tmp1_.assign( { 1., -1. }, { b, tmp1_ }, level, flag_ );
    }
 
    void postSmooth( const OperatorType&,
