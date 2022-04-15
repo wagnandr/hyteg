@@ -242,23 +242,6 @@ void factorize_matrix( FormType& form, uint_t level, Cell& cell, const Factoriza
             const real_t a_se  = a_stencil[SD::VERTEX_SE];
             const real_t a_c   = a_stencil[SD::VERTEX_C];
 
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y, z - 1 ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( a_bc, 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y - 1, z ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( a_s, 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x - 1, y + 1, z - 1 ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( a_bnw, 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x + 1, y, z - 1 ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( a_be, 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x - 1, y, z ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( a_w, 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y + 1, z - 1 ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( a_bn, 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x + 1, y - 1, z ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( a_se, 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y, z ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( a_c, 0. );
-
             // beta_bc:
             real_t beta_bc = a_bc / gamma[SD::VERTEX_C][fidx( x, y )];
             // beta_s:
@@ -300,23 +283,6 @@ void factorize_matrix( FormType& form, uint_t level, Cell& cell, const Factoriza
             beta_c -= beta_se * beta_se * beta[SD::VERTEX_C][fidx( x + 1, y - 1 )];
             beta_c -= beta_s * beta_s * beta[SD::VERTEX_C][fidx( x, y - 1 )];
             beta_c -= beta_w * beta_w * beta[SD::VERTEX_C][fidx( x - 1, y )];
-
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y, z - 1 ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( beta_bc, 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y - 1, z ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( beta_s, 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x - 1, y + 1, z - 1 ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( beta_bnw, 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x + 1, y, z - 1 ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( beta_be, 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x - 1, y, z ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( beta_w, 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y + 1, z - 1 ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( beta_bn, 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x + 1, y - 1, z ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( beta_se, 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y, z ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( beta_c, 0. );
 
             // write back into beta:
             beta[SD::VERTEX_BC][fidx( x, y )]  = beta_bc;
@@ -385,23 +351,6 @@ void apply_substitutions( LStencilProvider&   get_l_stencil,
             get_l_stencil( x, y, z, l_stencil );
             u[cidx( x, y, z, SD::VERTEX_C )] = b[cidx( x, y, z, SD::VERTEX_C )];
 
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y, z - 1 ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[SD::VERTEX_BC], 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y - 1, z ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[SD::VERTEX_S], 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x - 1, y + 1, z - 1 ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[SD::VERTEX_BNW], 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x + 1, y, z - 1 ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[SD::VERTEX_BE], 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x - 1, y, z ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[SD::VERTEX_W], 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y + 1, z - 1 ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[SD::VERTEX_BN], 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x + 1, y - 1, z ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[SD::VERTEX_SE], 0. );
-            //            if ( vertexdof::macrocell::isVertexOnBoundary( level, indexing::Index( x, y, z ) ) )
-            //               WALBERLA_CHECK_FLOAT_EQUAL( l_stencil[SD::VERTEX_C], 0. );
-
             for ( auto d : lowerDirections )
             {
                u[cidx( x, y, z, SD::VERTEX_C )] -= l_stencil[d] * u[cidx( x, y, z, d )];
@@ -418,7 +367,6 @@ void apply_substitutions( LStencilProvider&   get_l_stencil,
          for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
          {
             get_l_stencil( x, y, z, l_stencil );
-            //print_stencil(x,y,z,l_stencil);
             u[cidx( x, y, z, SD::VERTEX_C )] /= l_stencil[SD::VERTEX_C];
          }
       }
@@ -778,7 +726,7 @@ void apply_surrogate_substitutions( LDLTBoundaryStencils& boundaryStencils,
    };
 
    auto get_d_stencil = [&boundaryStencils, level]( uint_t x, uint_t y, uint_t z, std::map< SD, real_t >& stencil ) {
-     stencil = boundaryStencils.get( x, y, z );
+      stencil = boundaryStencils.get( x, y, z );
    };
 
    const auto N_edge = levelinfo::num_microvertices_per_edge( level );
@@ -800,7 +748,7 @@ void apply_surrogate_substitutions( LDLTBoundaryStencils& boundaryStencils,
 
    auto apply_diagonal_scaling =
        [cidx]( uint_t x, uint_t y, uint_t z, std::map< SD, real_t >& stencil, real_t const* const, real_t* u_dat ) {
-          u_dat[cidx( x, y, z, SD::VERTEX_C )] /= stencil[SD::VERTEX_C];
+          u_dat[cidx( x, y, z, SD::VERTEX_C )] *= stencil[SD::VERTEX_C];
        };
 
    auto get_lt_stencil =
@@ -1285,6 +1233,9 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
       auto factorization = [&boundaryData, level, N_edge, is_interpolation_point, h, &interpolators](
                                uint_t x, uint_t y, uint_t z, std::map< SD, real_t >& stencil ) {
          Point3D p( { h * static_cast< real_t >( x ), h * static_cast< real_t >( y ), h * static_cast< real_t >( z ) } );
+
+         // we save the inverse diagonal at the stencil
+         stencil[SD::VERTEX_C] = 1. / stencil[SD::VERTEX_C];
 
          if ( is_interpolation_point( x, y, z, 0, 0, 0 ) )
             interpolators.addValue( p, SD::VERTEX_C, stencil[SD::VERTEX_C] );
