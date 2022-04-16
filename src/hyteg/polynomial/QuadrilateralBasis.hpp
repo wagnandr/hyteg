@@ -19,41 +19,46 @@
 */
 #pragma once
 
-#include "hyteg/types/pointnd.hpp"
 #include "core/DataTypes.h"
+
+#include "hyteg/types/pointnd.hpp"
 
 namespace hyteg {
 
 using walberla::real_t;
 using walberla::uint_t;
 
-class QuadrilateralBasis3D {
+class QuadrilateralBasis3D
+{
  public:
    QuadrilateralBasis3D( uint_t degreeX, uint_t degreeY, uint_t degreeZ )
-   : degreeX_(degreeX), degreeY_(degreeY), degreeZ_(degreeZ)
+   : degreeX_( degreeX )
+   , degreeY_( degreeY )
+   , degreeZ_( degreeZ )
    {}
 
-   [[nodiscard]] real_t eval(uint_t basis, const Point3D &p) const {
+   QuadrilateralBasis3D( const std::array< uint_t, 3 >& degrees )
+   : QuadrilateralBasis3D( degrees[0], degrees[1], degrees[2] )
+   {}
+
+   [[nodiscard]] real_t eval( uint_t basis, const Point3D& p ) const
+   {
       const uint_t numMonomialsY = degreeY_ + 1;
       const uint_t numMonomialsZ = degreeZ_ + 1;
-      const uint_t powerX = basis / (numMonomialsY * numMonomialsZ);
+      const uint_t powerX        = basis / ( numMonomialsY * numMonomialsZ );
       basis -= powerX * numMonomialsY * numMonomialsZ;
       const uint_t powerY = basis / numMonomialsZ;
       basis -= powerY * numMonomialsZ;
       const uint_t powerZ = basis;
-      WALBERLA_ASSERT_LESS_EQUAL(powerX, degreeX_);
-      WALBERLA_ASSERT_LESS_EQUAL(powerY, degreeY_);
-      WALBERLA_ASSERT_LESS_EQUAL(powerZ, degreeZ_);
-      return std::pow(p[0], powerX) * std::pow(p[1], powerY) * std::pow(p[2], powerZ);
+      WALBERLA_ASSERT_LESS_EQUAL( powerX, degreeX_ );
+      WALBERLA_ASSERT_LESS_EQUAL( powerY, degreeY_ );
+      WALBERLA_ASSERT_LESS_EQUAL( powerZ, degreeZ_ );
+      return std::pow( p[0], powerX ) * std::pow( p[1], powerY ) * std::pow( p[2], powerZ );
    }
 
-   [[nodiscard]] std::array< uint_t, 3 > getDegrees() const {
-      return { degreeX_, degreeY_, degreeZ_ };
-   }
+   [[nodiscard]] std::array< uint_t, 3 > getDegrees() const { return { degreeX_, degreeY_, degreeZ_ }; }
 
-   [[nodiscard]] uint_t numBasisFunctions() const {
-      return (degreeX_ + 1) * (degreeY_ + 1) * (degreeZ_ + 1);
-   }
+   [[nodiscard]] uint_t numBasisFunctions() const { return ( degreeX_ + 1 ) * ( degreeY_ + 1 ) * ( degreeZ_ + 1 ); }
 
  private:
    uint_t degreeX_;
@@ -61,33 +66,32 @@ class QuadrilateralBasis3D {
    uint_t degreeZ_;
 };
 
-class QuadrilateralBasis2D {
+class QuadrilateralBasis2D
+{
  public:
    QuadrilateralBasis2D( uint_t degreeX, uint_t degreeY )
-       : degreeX_(degreeX), degreeY_(degreeY)
+   : degreeX_( degreeX )
+   , degreeY_( degreeY )
    {}
 
-   [[nodiscard]] real_t eval(uint_t basis, const Point2D &p) const {
+   [[nodiscard]] real_t eval( uint_t basis, const Point2D& p ) const
+   {
       const uint_t numMonomialsY = degreeY_ + 1;
-      const uint_t powerX = basis / numMonomialsY;
+      const uint_t powerX        = basis / numMonomialsY;
       basis -= powerX * numMonomialsY;
       const uint_t powerY = basis;
-      WALBERLA_ASSERT_LESS_EQUAL(powerX, degreeX_);
-      WALBERLA_ASSERT_LESS_EQUAL(powerY, degreeY_);
-      return std::pow(p[0], powerX) * std::pow(p[1], powerY);
+      WALBERLA_ASSERT_LESS_EQUAL( powerX, degreeX_ );
+      WALBERLA_ASSERT_LESS_EQUAL( powerY, degreeY_ );
+      return std::pow( p[0], powerX ) * std::pow( p[1], powerY );
    }
 
-   [[nodiscard]] std::array< uint_t, 2 > getDegrees() const {
-      return { degreeX_, degreeY_ };
-   }
+   [[nodiscard]] std::array< uint_t, 2 > getDegrees() const { return { degreeX_, degreeY_ }; }
 
-   [[nodiscard]] uint_t numBasisFunctions() const {
-      return (degreeX_ + 1) * (degreeY_ + 1);
-   }
+   [[nodiscard]] uint_t numBasisFunctions() const { return ( degreeX_ + 1 ) * ( degreeY_ + 1 ); }
 
  private:
    uint_t degreeX_;
    uint_t degreeY_;
 };
 
-}
+} // namespace hyteg

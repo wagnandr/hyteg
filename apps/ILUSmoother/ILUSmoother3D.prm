@@ -48,10 +48,15 @@ Parameters
   // smoother_type gs;
   // smoother_type cell_gs;
 
-  surrogate_degree_x 6;
-  surrogate_degree_y 6;
-  surrogate_degree_z 6;
-  surrogate_skip_level 4;
+  ilu_surrogate_degree_x 6;
+  ilu_surrogate_degree_y 6;
+  ilu_surrogate_degree_z 6;
+  ilu_surrogate_skip_level 4;
+
+  op_surrogate_degree_x 1;
+  op_surrogate_degree_y 1;
+  op_surrogate_degree_z 1;
+  op_surrogate_assembly_level 4;
 
   sm_steps_lower_primitives 10;
   sm_steps_lower_primitives_backward 10;

@@ -82,15 +82,24 @@ std::shared_ptr< hyteg::Solver< OperatorType > >
       }
       else if ( smoother_type == "surrogate_ldlt" )
       {
-         const uint_t degreeX   = parameters.getParameter< uint_t >( "surrogate_degree_x" );
-         const uint_t degreeY   = parameters.getParameter< uint_t >( "surrogate_degree_y" );
-         const uint_t degreeZ   = parameters.getParameter< uint_t >( "surrogate_degree_z" );
-         const uint_t skipLevel = parameters.getParameter< uint_t >( "surrogate_skip_level" );
+         const uint_t opDegreeX     = parameters.getParameter< uint_t >( "op_surrogate_degree_x" );
+         const uint_t opDegreeY     = parameters.getParameter< uint_t >( "op_surrogate_degree_y" );
+         const uint_t opDegreeZ     = parameters.getParameter< uint_t >( "op_surrogate_degree_z" );
+         const uint_t assemblyLevel = parameters.getParameter< uint_t >( "op_surrogate_assembly_level" );
+
+         std::array< uint_t, 3 > opDegrees = { opDegreeX, opDegreeY, opDegreeZ };
+
+         const uint_t iluDegreeX = parameters.getParameter< uint_t >( "ilu_surrogate_degree_x" );
+         const uint_t iluDegreeY = parameters.getParameter< uint_t >( "ilu_surrogate_degree_y" );
+         const uint_t iluDegreeZ = parameters.getParameter< uint_t >( "ilu_surrogate_degree_z" );
+         const uint_t skipLevel  = parameters.getParameter< uint_t >( "ilu_surrogate_skip_level" );
+
+         std::array< uint_t, 3 > iluDegrees = { iluDegreeX, iluDegreeY, iluDegreeZ };
 
          // cell ilu
          auto cell_smoother = std::make_shared< hyteg::P1LDLTSurrogateCellSmoother< OperatorType, FormType > >(
-             op.getStorage(), op.getMinLevel(), op.getMaxLevel(), degreeX, degreeY, degreeZ, form );
-         cell_smoother->init( skipLevel );
+             op.getStorage(), op.getMinLevel(), op.getMaxLevel(), opDegrees, iluDegrees, form );
+         cell_smoother->init( assemblyLevel, skipLevel );
          eigen_smoother->setCellSmoother( cell_smoother );
       }
       else if ( smoother_type == "cell_gs" )
@@ -250,15 +259,15 @@ int main( int argc, char** argv )
       const double z_m = kappa_upper / height_upper / ( kappa_lower / height_lower + kappa_upper / height_upper );
 
       boundaryConditions = [height_lower, height_upper, z_m]( const hyteg::Point3D& x ) {
-        const double z = x[2];
-        if ( z < height_lower )
-        {
-           return z_m / height_lower * z;
-        }
-        else
-        {
-           return ( 1 - z_m ) / height_upper * ( z - height_lower ) + z_m;
-        }
+         const double z = x[2];
+         if ( z < height_lower )
+         {
+            return z_m / height_lower * z;
+         }
+         else
+         {
+            return ( 1 - z_m ) / height_upper * ( z - height_lower ) + z_m;
+         }
       };
 
       rhsFunctional = []( const hyteg::Point3D& x ) { return 0; };
@@ -269,10 +278,7 @@ int main( int argc, char** argv )
 
       kappa3d = []( const hyteg::Point3D& p ) { return p[0] + 5 * p[1] + 9 * p[2] + 1; };
 
-      rhsFunctional = []( const hyteg::Point3D& ) {
-         return -(2 * 1 - 1 * 5 + 0.5 * 9);
-      };
-
+      rhsFunctional = []( const hyteg::Point3D& ) { return -( 2 * 1 - 1 * 5 + 0.5 * 9 ); };
    }
    else if ( solution_type == "zero" || powermethod )
    {
@@ -321,10 +327,10 @@ int main( int argc, char** argv )
       kappa3d = [=]( const Point3D& p ) {
          if ( p[2] < height )
             return kappa_lower;
-         else if (p[2] > height)
+         else if ( p[2] > height )
             return kappa_upper;
          else
-            WALBERLA_ABORT("not defined")
+            WALBERLA_ABORT( "not defined" )
       };
    }
    if ( domain == "two_layer_cube_v2" )
@@ -334,12 +340,12 @@ int main( int argc, char** argv )
       const real_t height      = parameters.getParameter< real_t >( "tetrahedron_height" );
 
       kappa3d = [=]( const Point3D& p ) {
-        if ( p[2] < 1. )
-           return kappa_lower;
-        else if (p[2] > 1. )
-           return kappa_upper;
-        else
-         WALBERLA_ABORT("not defined");
+         if ( p[2] < 1. )
+            return kappa_lower;
+         else if ( p[2] > 1. )
+            return kappa_upper;
+         else
+            WALBERLA_ABORT( "not defined" );
       };
    }
 
