@@ -41,6 +41,46 @@ constexpr std::array< SD, 15 > allDirections = { SD::VERTEX_C,
                                                  SD::VERTEX_TC,
                                                  SD::VERTEX_TW };
 
+indexing::IndexIncrement toIndex( SD dir )
+{
+   switch ( dir )
+   {
+   case SD::VERTEX_W:
+      return { -1, 0, 0 };
+   case SD::VERTEX_S:
+      return { 0, -1, 0 };
+   case SD::VERTEX_SE:
+      return { +1, -1, 0 };
+   case SD::VERTEX_BNW:
+      return { -1, +1, -1 };
+   case SD::VERTEX_BN:
+      return { 0, +1, -1 };
+   case SD::VERTEX_BC:
+      return { 0, 0, -1 };
+   case SD::VERTEX_BE:
+      return { +1, 0, -1 };
+   case SD::VERTEX_C:
+      return { 0, 0, 0 };
+   case SD::VERTEX_E:
+      return { +1, 0, 0 };
+   case SD::VERTEX_N:
+      return { 0, +1, 0 };
+   case SD::VERTEX_NW:
+      return { -1, +1, 0 };
+   case SD::VERTEX_TSE:
+      return { +1, -1, +1 };
+   case SD::VERTEX_TS:
+      return { 0, -1, +1 };
+   case SD::VERTEX_TC:
+      return { 0, 0, 1 };
+   case SD::VERTEX_TW:
+      return { -1, 0, +1 };
+   default:
+      break;
+   };
+   WALBERLA_ABORT( "not implemented" );
+}
+
 SD opposite( SD dir )
 {
    switch ( dir )
@@ -531,6 +571,8 @@ class LDLTPolynomials
 
    inline const Polynomial& operator[]( stencilDirection direction ) const { return polynomials_.at( direction ); }
 
+   inline bool contains( stencilDirection direction ) const { return polynomials_.count( direction ); }
+
    [[nodiscard]] inline std::array< uint_t, 3 > getDegrees() const { return basis_.getDegrees(); }
 
  private:
@@ -664,6 +706,26 @@ class PolyStencil
       }
    }
 
+   template < typename PolyListType >
+   void setPolynomialSymmetrical( PolyListType& polylist, real_t h )
+   {
+      for ( uint_t i = 0; i < directions_.size(); i += 1 )
+      {
+         if ( polylist.contains( directions_[i] ) )
+         {
+            polynomials_[i].setPolynomial( polylist[directions_[i]] );
+         }
+         else
+         {
+            polynomials_[i].setPolynomial( polylist[opposite( directions_[i] )] );
+            auto indexIncrement = toIndex( directions_[i] );
+            offsetsX_[i]        = h * indexIncrement[0];
+            offsetsY_[i]        = h * indexIncrement[1];
+            offsetsZ_[i]        = h * indexIncrement[2];
+         }
+      }
+   }
+
    void setY( real_t y )
    {
       for ( uint_t i = 0; i < directions_.size(); i += 1 )
@@ -780,6 +842,7 @@ void assemble_surrogate_operator( P1Form& form, const Cell& cell, uint_t coarse_
 template < typename FunctionType >
 void apply_surrogate_operator( LDLTPolynomials&    polynomials,
                                uint_t              level,
+                               bool                useSymmetry,
                                Cell&               cell,
                                const FunctionType& src_function,
                                const FunctionType& dst_function )
@@ -797,7 +860,10 @@ void apply_surrogate_operator( LDLTPolynomials&    polynomials,
    auto dst = cell.getData( dst_function.getCellDataID() )->getPointer( level );
 
    PolyStencil< 15 > poly_stencil( polynomials.getDegrees(), allDirections );
-   poly_stencil.setPolynomial( polynomials );
+   if ( useSymmetry )
+      poly_stencil.setPolynomialSymmetrical( polynomials, h );
+   else
+      poly_stencil.setPolynomial( polynomials );
 
    std::map< SD, real_t > a_stencil;
 
@@ -1230,6 +1296,7 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
                                 uint_t                              maxLevel,
                                 std::array< uint_t, 3 >             opDegree,
                                 std::array< uint_t, 3 >             iluDegree,
+                                bool                                useSymmetry,
                                 FormType                            form )
    : storage_( std::move( storage ) )
    , tmp1_( "tmp", storage_, minLevel, maxLevel )
@@ -1240,6 +1307,7 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
    , maxLevel_( maxLevel )
    , iluPolyDegree_( iluDegree )
    , opPolyDegree_( opDegree )
+   , useSymmetryOfOperator_( useSymmetry )
    {
       // storage for surrogate ldlt
       auto polyDataHandling = std::make_shared< ldlt::p1::dim3::LDLTHierachicalPolynomialsDataHandling >(
@@ -1247,8 +1315,17 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
       storage_->addCellData( ldltPolynomialsID_, polyDataHandling, "P1LDLTSurrogateCellSmootherPolynomials" );
 
       // storage for surrogate operator
-      auto polyDataHandlingOp = std::make_shared< ldlt::p1::dim3::LDLTHierachicalPolynomialsDataHandling >(
-          minLevel_, maxLevel_, opPolyDegree_, ldlt::p1::dim3::allDirections );
+      std::shared_ptr< ldlt::p1::dim3::LDLTHierachicalPolynomialsDataHandling > polyDataHandlingOp;
+      if ( useSymmetryOfOperator_ )
+      {
+         polyDataHandlingOp = std::make_shared< ldlt::p1::dim3::LDLTHierachicalPolynomialsDataHandling >(
+             minLevel_, maxLevel_, opPolyDegree_, ldlt::p1::dim3::lowerDirectionsAndCenter );
+      }
+      else
+      {
+         polyDataHandlingOp = std::make_shared< ldlt::p1::dim3::LDLTHierachicalPolynomialsDataHandling >(
+             minLevel_, maxLevel_, opPolyDegree_, ldlt::p1::dim3::allDirections );
+      }
       storage_->addCellData( opPolynomialsID_, polyDataHandlingOp, "P1SurrogateCellSmootherPolynomials" );
 
       // storage for the boundary stencils
@@ -1258,8 +1335,6 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
    }
 
    using SD = stencilDirection;
-
-   static constexpr auto cindex = vertexdof::macrocell::indexFromVertex;
 
    void init( uint_t assemblyLevel, uint_t skipLevel )
    {
@@ -1294,7 +1369,7 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
       {
          Cell& cell        = *cit.second;
          auto& polynomials = cell.getData( opPolynomialsID_ )->getLevel( level );
-         ldlt::p1::dim3::apply_surrogate_operator( polynomials, level, cell, u, tmp1_ );
+         ldlt::p1::dim3::apply_surrogate_operator( polynomials, level, useSymmetryOfOperator_, cell, u, tmp1_ );
       }
 
       tmp1_.assign( { 1., -1. }, { b, tmp1_ }, level, flag_ );
@@ -1319,13 +1394,22 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
 
    void factorize_op_matrix_inplace( uint_t level, Cell& cell, FormType& form, uint_t coarseLevel )
    {
-      ldlt::p1::dim3::Interpolators interpolators( opPolyDegree_, ldlt::p1::dim3::allDirections );
+      std::unique_ptr< ldlt::p1::dim3::Interpolators > interpolators( nullptr );
+      if ( useSymmetryOfOperator_ )
+      {
+         interpolators =
+             std::make_unique< ldlt::p1::dim3::Interpolators >( opPolyDegree_, ldlt::p1::dim3::lowerDirectionsAndCenter );
+      }
+      else
+      {
+         interpolators = std::make_unique< ldlt::p1::dim3::Interpolators >( opPolyDegree_, ldlt::p1::dim3::allDirections );
+      }
 
-      ldlt::p1::dim3::assemble_surrogate_operator( form, cell, coarseLevel, level, interpolators );
+      ldlt::p1::dim3::assemble_surrogate_operator( form, cell, coarseLevel, level, *interpolators );
 
       auto& polynomials = cell.getData( opPolynomialsID_ )->getLevel( level );
 
-      interpolators.interpolate( polynomials );
+      interpolators->interpolate( polynomials );
    }
 
    void factorize_ldlt_matrix_inplace( uint_t level, Cell& cell, FormType& form, uint_t skipLevel )
@@ -1477,6 +1561,8 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
 
    std::array< uint_t, 3 > iluPolyDegree_;
    std::array< uint_t, 3 > opPolyDegree_;
+
+   bool useSymmetryOfOperator_;
 
    PrimitiveDataID< ldlt::p1::dim3::LDLTHierarchicalBoundaryStencils, Cell > boundaryID_;
 

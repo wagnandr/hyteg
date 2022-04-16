@@ -57,6 +57,7 @@ Parameters
   op_surrogate_degree_y 1;
   op_surrogate_degree_z 1;
   op_surrogate_assembly_level 4;
+  op_surrogate_use_symmetry true;
 
   sm_steps_lower_primitives 10;
   sm_steps_lower_primitives_backward 10;

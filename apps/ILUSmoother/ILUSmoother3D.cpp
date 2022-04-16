@@ -86,19 +86,20 @@ std::shared_ptr< hyteg::Solver< OperatorType > >
          const uint_t opDegreeY     = parameters.getParameter< uint_t >( "op_surrogate_degree_y" );
          const uint_t opDegreeZ     = parameters.getParameter< uint_t >( "op_surrogate_degree_z" );
          const uint_t assemblyLevel = parameters.getParameter< uint_t >( "op_surrogate_assembly_level" );
+         const bool   symmetry      = parameters.getParameter< bool >( "op_surrogate_use_symmetry" );
 
-         std::array< uint_t, 3 > opDegrees = { opDegreeX, opDegreeY, opDegreeZ };
+         const std::array< uint_t, 3 > opDegrees = { opDegreeX, opDegreeY, opDegreeZ };
 
          const uint_t iluDegreeX = parameters.getParameter< uint_t >( "ilu_surrogate_degree_x" );
          const uint_t iluDegreeY = parameters.getParameter< uint_t >( "ilu_surrogate_degree_y" );
          const uint_t iluDegreeZ = parameters.getParameter< uint_t >( "ilu_surrogate_degree_z" );
          const uint_t skipLevel  = parameters.getParameter< uint_t >( "ilu_surrogate_skip_level" );
 
-         std::array< uint_t, 3 > iluDegrees = { iluDegreeX, iluDegreeY, iluDegreeZ };
+         const std::array< uint_t, 3 > iluDegrees = { iluDegreeX, iluDegreeY, iluDegreeZ };
 
          // cell ilu
          auto cell_smoother = std::make_shared< hyteg::P1LDLTSurrogateCellSmoother< OperatorType, FormType > >(
-             op.getStorage(), op.getMinLevel(), op.getMaxLevel(), opDegrees, iluDegrees, form );
+             op.getStorage(), op.getMinLevel(), op.getMaxLevel(), opDegrees, iluDegrees, symmetry, form );
          cell_smoother->init( assemblyLevel, skipLevel );
          eigen_smoother->setCellSmoother( cell_smoother );
       }
@@ -277,8 +278,12 @@ int main( int argc, char** argv )
       boundaryConditions = []( const hyteg::Point3D& p ) { return 2 * p[0] - p[1] + 0.5 * p[2]; };
 
       kappa3d = []( const hyteg::Point3D& p ) { return p[0] + 5 * p[1] + 9 * p[2] + 1; };
-
       rhsFunctional = []( const hyteg::Point3D& ) { return -( 2 * 1 - 1 * 5 + 0.5 * 9 ); };
+
+      // kappa3d = []( const hyteg::Point3D& p ) { return 1.; };
+      // rhsFunctional = []( const hyteg::Point3D& ) { return 0.; };
+
+
    }
    else if ( solution_type == "zero" || powermethod )
    {
