@@ -195,7 +195,9 @@ int main( int argc, char** argv )
 
    std::function< real_t( const hyteg::Point3D& ) > boundaryConditions;
    std::function< real_t( const hyteg::Point3D& ) > rhsFunctional;
-   std::function< real_t( const hyteg::Point3D& ) > kappa;
+
+   std::function< real_t( const Point3D& ) > kappa2d = []( const Point3D& p ) { return 1.; };
+   std::function< real_t( const Point3D& ) > kappa3d = []( const Point3D& p ) { return 1.; };
 
    if ( solution_type == "sines" && !powermethod && domain != "two_layer_cube" && domain != "two_layer_cube_v2" )
    {
@@ -261,6 +263,17 @@ int main( int argc, char** argv )
 
       rhsFunctional = []( const hyteg::Point3D& x ) { return 0; };
    }
+   else if ( solution_type == "linear" && !powermethod )
+   {
+      boundaryConditions = []( const hyteg::Point3D& p ) { return 2 * p[0] - p[1] + 0.5 * p[2]; };
+
+      kappa3d = []( const hyteg::Point3D& p ) { return p[0] + 5 * p[1] + 9 * p[2] + 1; };
+
+      rhsFunctional = []( const hyteg::Point3D& ) {
+         return -(2 * 1 - 1 * 5 + 0.5 * 9);
+      };
+
+   }
    else if ( solution_type == "zero" || powermethod )
    {
       boundaryConditions = []( const hyteg::Point3D& ) { return 0; };
@@ -298,9 +311,6 @@ int main( int argc, char** argv )
    using OperatorType = P1ElementwiseBlendingDivKGradOperator;
    using FormType     = forms::p1_div_k_grad_blending_q3;
    //using FormType = forms::p1_div_k_grad_affine_q3;
-
-   std::function< real_t( const Point3D& ) > kappa2d = []( const Point3D& p ) { return 1.; };
-   std::function< real_t( const Point3D& ) > kappa3d = []( const Point3D& p ) { return 1.; };
 
    if ( domain == "two_layer_cube" )
    {
