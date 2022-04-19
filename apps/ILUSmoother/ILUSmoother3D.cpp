@@ -183,6 +183,8 @@ int main( int argc, char** argv )
 
    const std::string solution_type = parameters.getParameter< std::string >( "solution_type" );
 
+   const std::string kappa_type = parameters.getParameter< std::string >( "kappa_type" );
+
    const auto setupStorage = createDomain( parameters );
 
    if ( parameters.getParameter< bool >( "auto_permutation" ) )
@@ -208,6 +210,35 @@ int main( int argc, char** argv )
 
    std::function< real_t( const Point3D& ) > kappa2d = []( const Point3D& p ) { return 1.; };
    std::function< real_t( const Point3D& ) > kappa3d = []( const Point3D& p ) { return 1.; };
+
+   if ( kappa_type == "constant" )
+   {
+      kappa2d = []( const Point3D& p ) { return 1.; };
+      kappa3d = []( const Point3D& p ) { return 1001.; };
+   }
+   else if ( kappa_type == "linear" )
+   {
+      kappa2d = []( const Point3D& p ) { return 10. + 10 * p[0] - 5 * p[1]; };
+      kappa3d = []( const Point3D& p ) { return 1. + 10 * ( p[0] + p[1] + p[2] ); };
+   }
+   else if ( kappa_type == "quadratic" )
+   {
+      kappa2d = []( const Point3D& p ) { return 10. + 10 * std::pow( p[0], 2 ) - 5 * p[1] * p[0]; };
+      kappa3d = []( const Point3D& p ) { return 1. + 10 * ( std::pow( p[0], 2 ) + std::pow( p[1], 2 ) + std::pow( p[2], 2 ) ); };
+   }
+   else if ( kappa_type == "cubic" )
+   {
+      kappa2d = []( const Point3D& p ) { return 10. + 10 * std::pow( p[0], 2 ) - 5 * p[1] * p[0]; };
+      kappa3d = []( const Point3D& p ) { return 1. + 10 * ( std::pow( p[0], 3 ) + std::pow( p[1], 3 ) + std::pow( p[2], 3 ) ); };
+   }
+   else if ( kappa_type == "unspecified" )
+   {
+      // DO NOTHING
+   }
+   else
+   {
+      WALBERLA_ABORT( "unknown kappa type" );
+   }
 
    if ( solution_type == "sines" && !powermethod && domain != "two_layer_cube" && domain != "two_layer_cube_v2" )
    {
@@ -277,13 +308,11 @@ int main( int argc, char** argv )
    {
       boundaryConditions = []( const hyteg::Point3D& p ) { return 2 * p[0] - p[1] + 0.5 * p[2]; };
 
-      kappa3d = []( const hyteg::Point3D& p ) { return p[0] + 5 * p[1] + 9 * p[2] + 1; };
+      kappa3d       = []( const hyteg::Point3D& p ) { return p[0] + 5 * p[1] + 9 * p[2] + 1; };
       rhsFunctional = []( const hyteg::Point3D& ) { return -( 2 * 1 - 1 * 5 + 0.5 * 9 ); };
 
       // kappa3d = []( const hyteg::Point3D& p ) { return 1.; };
       // rhsFunctional = []( const hyteg::Point3D& ) { return 0.; };
-
-
    }
    else if ( solution_type == "zero" || powermethod )
    {
