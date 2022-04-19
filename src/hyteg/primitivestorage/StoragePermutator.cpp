@@ -167,12 +167,12 @@ real_t StoragePermutator::getHeight( const Cell& cell, uint_t id ) const
 
     auto direction3 = cell.coordinates_[id] - cell.coordinates_[triangleVertexIds[0]];
 
-    return direction3.dot(normal);
+    return std::abs(direction3.dot(normal));
 }
 
 uint_t StoragePermutator::getMinHeightBaseTriangle(const Cell& cell) const
 {
-    real_t minHeight = 0;
+    real_t minHeight = getHeight(cell, 0);
     uint_t minHeightIndex = 0;
     for ( uint_t i = 0; i < 4; i += 1 )
     {
@@ -190,7 +190,7 @@ uint_t StoragePermutator::getMinHeightBaseTriangle(const Cell& cell) const
 
 uint_t StoragePermutator::getMaxHeightBaseTriangle(const Cell& cell) const
 {
-    real_t maxHeight = 0;
+    real_t maxHeight = getHeight(cell, 0);
     uint_t maxHeightIndex = 0;
     for ( uint_t i = 0; i < 4; i += 1 )
     {
@@ -213,10 +213,10 @@ void StoragePermutator::permutate_ilu( SetupPrimitiveStorage& storage )
       Cell& cell = *cit.second;
 
       // find largest area facet
-      // auto maxAreaIndex = getMaxAreaTriangle(cell);
+      auto maxAreaIndex = getMaxAreaTriangle(cell);
       //auto maxAreaIndex = getMaxAngleTriangle(cell);
       // auto maxAreaIndex      = getMinAngleTriangle( cell );
-      auto maxAreaIndex      = getMinHeightBaseTriangle( cell );
+      // auto maxAreaIndex      = getMinHeightBaseTriangle( cell );
       // auto maxAreaIndex      = getMaxHeightBaseTriangle( cell );
       auto maxLocalVertexIds = getVertexIds( maxAreaIndex );
 
@@ -225,8 +225,10 @@ void StoragePermutator::permutate_ilu( SetupPrimitiveStorage& storage )
 
       auto maxElementIdx = static_cast< uint_t >( std::max_element( angles.begin(), angles.end() ) - angles.begin() );
       auto minElementIdx = static_cast< uint_t >( std::min_element( angles.begin(), angles.end() ) - angles.begin() );
-      if ( maxElementIdx == minElementIdx )
+      if ( minElementIdx == maxElementIdx )
          minElementIdx = ( maxElementIdx + 1 ) % 4;
+      if ( minElementIdx == maxAreaIndex )
+         minElementIdx = ( maxElementIdx + 2 ) % 4;
 
       const uint_t otherElementIdx = 3 - maxElementIdx - minElementIdx;
 
