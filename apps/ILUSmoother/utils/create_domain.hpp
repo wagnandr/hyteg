@@ -72,19 +72,10 @@ std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::
       const double top_y = 0.0;
       const double top_z = parameters.getParameter< real_t >( "tetrahedron_height" );
 
-      /*
       std::array< hyteg::Point3D, 4 > vertices = { hyteg::Point3D( { 0.0, 0.0, 0.0 } ),
                                                    hyteg::Point3D( { 1.0, 0.0, 0.0 } ),
                                                    hyteg::Point3D( { 0.0, 1.0, 0.0 } ),
                                                    hyteg::Point3D( { top_x, top_y, top_z } ) };
-      */
-
-      const double s = 1;
-
-      std::array< hyteg::Point3D, 4 > vertices = { hyteg::Point3D( { 0.0 + s, 0.0 + s, 0.0 + s } ),
-                                                   hyteg::Point3D( { 1.0 + s, 0.0 + s, 0.0 + s } ),
-                                                   hyteg::Point3D( { 0.0 + s, 1.0 + s, 0.0 + s } ),
-                                                   hyteg::Point3D( { 1.0 + s, 1.0 + s, 1.0 + s } ) };
 
       // we permutate the vertices to study performance for different orientations:
       auto order = createPermutation( parameters.getParameter< uint_t >( "tetrahedron_permutation" ) );

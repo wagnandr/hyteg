@@ -9,17 +9,19 @@ class ResultsMGSurrogate:
     maxLevel: int
     smoother: str
     ilu_deg: Tuple[int, int, int]
+    boundary_correction: bool
     op_deg: Tuple[int, int, int]
     rate: float
     kappa_type: str
 
-def run_height_mg(smoother, ilu_deg, op_deg, kappa_type):
+def run_height_mg(smoother, ilu_deg, op_deg, boundary_correction, kappa_type):
     output = run('./run_surrogate_degree_isotropic.prm', [
         f'-Parameters.smoother_type={smoother}',
         f'-Parameters.domain=tetrahedron',
         f'-Parameters.ilu_surrogate_degree_x={ilu_deg[0]}',
         f'-Parameters.ilu_surrogate_degree_y={ilu_deg[1]}',
         f'-Parameters.ilu_surrogate_degree_z={ilu_deg[2]}',
+        f'-Parameters.ilu_use_boundary_correction={boundary_correction}',
         f'-Parameters.op_surrogate_degree_x={op_deg[0]}',
         f'-Parameters.op_surrogate_degree_y={op_deg[1]}',
         f'-Parameters.op_surrogate_degree_z={op_deg[2]}',
@@ -31,6 +33,7 @@ def run_height_mg(smoother, ilu_deg, op_deg, kappa_type):
         smoother=smoother,
         rate=extract_number('eigenvalue', output),
         ilu_deg=ilu_deg,
+        boundary_correction=boundary_correction,
         op_deg=op_deg,
         kappa_type=kappa_type,
     )
@@ -53,12 +56,13 @@ if __name__ == '__main__':
     op_deg = (5, 5, 5)
     for coefficient_degree in range(4):
         for deg in degrees:
-            ilu_deg = (deg, deg, deg)
-            #op_deg = (deg, deg, deg)
-            output.append(run_height_mg(ilu_surrogate, ilu_deg, op_deg, kappa_type[coefficient_degree]))
-            print(to_json(output))
+            for boundary_correction in [False, True]:
+                ilu_deg = (deg, deg, deg)
+                #op_deg = (deg, deg, deg)
+                output.append(run_height_mg(ilu_surrogate, ilu_deg, op_deg, boundary_correction, kappa_type[coefficient_degree]))
+                print(to_json(output))
 
-        output.append(run_height_mg(ilu_basic, [0, 0, 0], op_deg, kappa_type[coefficient_degree]))
+        output.append(run_height_mg(ilu_basic, [0, 0, 0], op_deg, True, kappa_type[coefficient_degree]))
 
     with open('run_surrogate_degree_isotropic.json', 'w') as f:
         f.write(to_json({

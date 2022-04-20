@@ -98,10 +98,22 @@ std::shared_ptr< hyteg::Solver< OperatorType > >
          const std::array< uint_t, 3 > iluDegrees = { iluDegreeX, iluDegreeY, iluDegreeZ };
 
          // cell ilu
-         auto cell_smoother = std::make_shared< hyteg::P1LDLTSurrogateCellSmoother< OperatorType, FormType > >(
-             op.getStorage(), op.getMinLevel(), op.getMaxLevel(), opDegrees, iluDegrees, symmetry, form );
-         cell_smoother->init( assemblyLevel, skipLevel );
-         eigen_smoother->setCellSmoother( cell_smoother );
+         const bool ilu_use_boundary_correction = parameters.getParameter< bool >( "ilu_use_boundary_correction" );
+
+         if ( ilu_use_boundary_correction )
+         {
+            auto cell_smoother = std::make_shared< hyteg::P1LDLTSurrogateCellSmoother< OperatorType, FormType, true > >(
+                op.getStorage(), op.getMinLevel(), op.getMaxLevel(), opDegrees, iluDegrees, symmetry, form );
+            cell_smoother->init( assemblyLevel, skipLevel );
+            eigen_smoother->setCellSmoother( cell_smoother );
+         }
+         else
+         {
+            auto cell_smoother = std::make_shared< hyteg::P1LDLTSurrogateCellSmoother< OperatorType, FormType, false > >(
+                op.getStorage(), op.getMinLevel(), op.getMaxLevel(), opDegrees, iluDegrees, symmetry, form );
+            cell_smoother->init( assemblyLevel, skipLevel );
+            eigen_smoother->setCellSmoother( cell_smoother );
+         }
       }
       else if ( smoother_type == "cell_gs" )
       {
@@ -214,7 +226,7 @@ int main( int argc, char** argv )
    if ( kappa_type == "constant" )
    {
       kappa2d = []( const Point3D& p ) { return 1.; };
-      kappa3d = []( const Point3D& p ) { return 1001.; };
+      kappa3d = []( const Point3D& p ) { return 101.; };
    }
    else if ( kappa_type == "linear" )
    {

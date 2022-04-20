@@ -1747,7 +1747,7 @@ void apply_full_surrogate_ilu_smoothing_step( LDLTPolynomials&      polynomials_
 } // namespace p1
 } // namespace ldlt
 
-template < class OperatorType, class FormType >
+template < class OperatorType, class FormType, bool useBoundaryCorrection = false >
 class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
 {
  public:
@@ -1810,8 +1810,6 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
          }
       }
    }
-
-   const static bool useBoundaryCorrection = false;
 
    void preSmooth( const OperatorType&                   A,
                    uint_t                                level,

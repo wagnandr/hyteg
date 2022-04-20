@@ -50,7 +50,7 @@ Parameters
   usePCG false;
 
   // which smoother: hyteg_gs, eigen_ilu, inplace_ldlt
-  // smoother_type surrogate_ldlt;
+  smoother_type surrogate_ldlt;
   // smoother_type inplace_ldlt;
   // smoother_type gs;
   // smoother_type cell_gs;
@@ -59,6 +59,8 @@ Parameters
   ilu_surrogate_degree_y 8;
   ilu_surrogate_degree_z 8;
   ilu_surrogate_skip_level 4;
+
+  ilu_use_boundary_correction true;
 
   op_surrogate_degree_x 12;
   op_surrogate_degree_y 12;
