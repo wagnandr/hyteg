@@ -23,6 +23,7 @@
 #include "core/Environment.h"
 #include "core/math/Constants.h"
 
+#include "hyteg/geometry/IcosahedralShellMap.hpp"
 #include "hyteg/primitivestorage/SetupPrimitiveStorage.hpp"
 
 using walberla::real_t;
@@ -41,8 +42,8 @@ void printPermutations()
 {
    for ( uint_t permutationNumber = 0; permutationNumber < 24; ++permutationNumber )
    {
-      auto order = createPermutation(permutationNumber);
-      WALBERLA_LOG_INFO_ON_ROOT(permutationNumber << " " << order[0] << " " << order[1] << " " << order[2] << " " << order[3]);
+      auto order = createPermutation( permutationNumber );
+      WALBERLA_LOG_INFO_ON_ROOT( permutationNumber << " " << order[0] << " " << order[1] << " " << order[2] << " " << order[3] );
    }
 }
 
@@ -71,10 +72,19 @@ std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::
       const double top_y = 0.0;
       const double top_z = parameters.getParameter< real_t >( "tetrahedron_height" );
 
+      /*
       std::array< hyteg::Point3D, 4 > vertices = { hyteg::Point3D( { 0.0, 0.0, 0.0 } ),
                                                    hyteg::Point3D( { 1.0, 0.0, 0.0 } ),
                                                    hyteg::Point3D( { 0.0, 1.0, 0.0 } ),
                                                    hyteg::Point3D( { top_x, top_y, top_z } ) };
+      */
+
+      const double s = 1;
+
+      std::array< hyteg::Point3D, 4 > vertices = { hyteg::Point3D( { 0.0 + s, 0.0 + s, 0.0 + s } ),
+                                                   hyteg::Point3D( { 1.0 + s, 0.0 + s, 0.0 + s } ),
+                                                   hyteg::Point3D( { 0.0 + s, 1.0 + s, 0.0 + s } ),
+                                                   hyteg::Point3D( { 1.0 + s, 1.0 + s, 1.0 + s } ) };
 
       // we permutate the vertices to study performance for different orientations:
       auto order = createPermutation( parameters.getParameter< uint_t >( "tetrahedron_permutation" ) );
@@ -85,6 +95,26 @@ std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::
       auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
           meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
       setupStorage->setMeshBoundaryFlagsOnBoundary( 1, 0, true );
+
+      return setupStorage;
+   }
+   else if ( domain == "blended_shell_triangle_1" )
+   {
+      std::array< hyteg::Point3D, 4 > vertices = { hyteg::Point3D( { 0, 0, -1 } ),
+                                                   hyteg::Point3D( { -0.723607, 0.525731, -0.447214 } ),
+                                                   hyteg::Point3D( { 0.276393, 0.850651, -0.447214 } ),
+                                                   hyteg::Point3D( { 0, 0, -0.5 } ) };
+
+      auto order = createPermutation( parameters.getParameter< uint_t >( "tetrahedron_permutation" ) );
+      executePermutation( vertices, order );
+
+      hyteg::MeshInfo meshInfo = hyteg::MeshInfo::singleTetrahedron( vertices );
+
+      auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
+          meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
+      setupStorage->setMeshBoundaryFlagsOnBoundary( 1, 0, true );
+
+      hyteg::IcosahedralShellMap::setMap( *setupStorage );
 
       return setupStorage;
    }
@@ -122,9 +152,10 @@ std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::
       auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
           meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
       setupStorage->setMeshBoundaryFlagsOnBoundary( 1, 0, true );
-      setupStorage->setMeshBoundaryFlagsByCentroidLocation( 2, [](const hyteg::Point3D & p){
-         return ((p[0] <= 1e-16 || p[0] >= 1-1e-16) || (p[1] <= 1e-16 || p[1] >= 1-1e-16) ) && (p[2] > 1e-16 && p[2] < 1 - 1e-16);
-      });
+      setupStorage->setMeshBoundaryFlagsByCentroidLocation( 2, []( const hyteg::Point3D& p ) {
+         return ( ( p[0] <= 1e-16 || p[0] >= 1 - 1e-16 ) || ( p[1] <= 1e-16 || p[1] >= 1 - 1e-16 ) ) &&
+                ( p[2] > 1e-16 && p[2] < 1 - 1e-16 );
+      } );
 
       return setupStorage;
    }
@@ -140,16 +171,17 @@ std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::
 
          if ( c[2] >= 2. - 1e-14 && c[2] <= 2. + 1e-14 )
          {
-            v.setCoordinates( hyteg::Point3D( { c[0], c[1], 1+top_z } ) );
+            v.setCoordinates( hyteg::Point3D( { c[0], c[1], 1 + top_z } ) );
          }
       }
 
       auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
           meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
       setupStorage->setMeshBoundaryFlagsOnBoundary( 1, 0, true );
-      setupStorage->setMeshBoundaryFlagsByCentroidLocation( 2, [top_z](const hyteg::Point3D & p){
-        return ((p[0] <= 1e-16 || p[0] >= 1-1e-16) || (p[1] <= 1e-16 || p[1] >= 1-1e-16) ) && (p[2] > 1e-16 && p[2] < 1+top_z - 1e-16);
-      });
+      setupStorage->setMeshBoundaryFlagsByCentroidLocation( 2, [top_z]( const hyteg::Point3D& p ) {
+         return ( ( p[0] <= 1e-16 || p[0] >= 1 - 1e-16 ) || ( p[1] <= 1e-16 || p[1] >= 1 - 1e-16 ) ) &&
+                ( p[2] > 1e-16 && p[2] < 1 + top_z - 1e-16 );
+      } );
 
       return setupStorage;
    }

@@ -15,7 +15,7 @@ Parameters
 
   // replaces the zero initial guess with something random
   randomInitialGuess false;
-  powermethod false;
+  powermethod true;
 
   // which solution: zero, sines?
   // solution_type sines;
@@ -23,16 +23,23 @@ Parameters
 
   // for domain tetrahedron;:
   tetrahedron_permutation 0;
-  tetrahedron_height 0.1;
+  tetrahedron_height 1;
 
   // domain squished_cube;
   // domain two_layer_cube_v2;
   // domain tetrahedron;
   // domain two_layer_cube;
   // domain tetrahedron_cap;
-  domain tetrahedron_spindle;
+  // domain tetrahedron_spindle;
   // domain tetrahedron_regular;
   // domain tetrahedron_spade;
+  domain blended_shell_triangle_1;
+
+  kappa_type unspecified;
+  // kappa_type constant;
+  // kappa_type linear;
+  // kappa_type quadratic;
+  // kappa_type cubic;
 
   kappa_upper 1.0;
   kappa_lower 1.0;
@@ -43,19 +50,19 @@ Parameters
   usePCG false;
 
   // which smoother: hyteg_gs, eigen_ilu, inplace_ldlt
-  smoother_type surrogate_ldlt;
+  // smoother_type surrogate_ldlt;
   // smoother_type inplace_ldlt;
   // smoother_type gs;
   // smoother_type cell_gs;
 
-  ilu_surrogate_degree_x 6;
-  ilu_surrogate_degree_y 6;
-  ilu_surrogate_degree_z 6;
+  ilu_surrogate_degree_x 8;
+  ilu_surrogate_degree_y 8;
+  ilu_surrogate_degree_z 8;
   ilu_surrogate_skip_level 4;
 
-  op_surrogate_degree_x 1;
-  op_surrogate_degree_y 1;
-  op_surrogate_degree_z 1;
+  op_surrogate_degree_x 12;
+  op_surrogate_degree_y 12;
+  op_surrogate_degree_z 12;
   op_surrogate_assembly_level 4;
   op_surrogate_use_symmetry true;
 
