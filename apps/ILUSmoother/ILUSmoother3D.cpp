@@ -316,15 +316,19 @@ int main( int argc, char** argv )
 
       rhsFunctional = []( const hyteg::Point3D& x ) { return 0; };
    }
-   else if ( solution_type == "linear" && !powermethod )
+   else if ( solution_type == "linear_with_coefficient" && !powermethod )
    {
       boundaryConditions = []( const hyteg::Point3D& p ) { return 2 * p[0] - p[1] + 0.5 * p[2]; };
 
       kappa3d       = []( const hyteg::Point3D& p ) { return p[0] + 5 * p[1] + 9 * p[2] + 1; };
       rhsFunctional = []( const hyteg::Point3D& ) { return -( 2 * 1 - 1 * 5 + 0.5 * 9 ); };
+   }
+   else if ( solution_type == "linear" && !powermethod )
+   {
+      boundaryConditions = []( const hyteg::Point3D& p ) { return 2 * p[0] - p[1] + 0.5 * p[2]; };
 
-      // kappa3d = []( const hyteg::Point3D& p ) { return 1.; };
-      // rhsFunctional = []( const hyteg::Point3D& ) { return 0.; };
+      kappa3d = []( const hyteg::Point3D& p ) { return 1.; };
+      rhsFunctional = []( const hyteg::Point3D& ) { return 0.; };
    }
    else if ( solution_type == "zero" || powermethod )
    {

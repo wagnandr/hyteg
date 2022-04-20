@@ -15,10 +15,11 @@ Parameters
 
   // replaces the zero initial guess with something random
   randomInitialGuess false;
-  powermethod true;
+  powermethod false;
 
   // which solution: zero, sines?
   // solution_type sines;
+  // solution_type linear_with_coefficient;
   solution_type linear;
 
   // for domain tetrahedron;:
@@ -32,8 +33,8 @@ Parameters
   // domain tetrahedron_cap;
   // domain tetrahedron_spindle;
   // domain tetrahedron_regular;
-  // domain tetrahedron_spade;
-  domain blended_shell_triangle_1;
+  domain tetrahedron_spade;
+  // domain blended_shell_triangle_1;
 
   kappa_type unspecified;
   // kappa_type constant;
@@ -62,9 +63,9 @@ Parameters
 
   ilu_use_boundary_correction true;
 
-  op_surrogate_degree_x 12;
-  op_surrogate_degree_y 12;
-  op_surrogate_degree_z 12;
+  op_surrogate_degree_x 0;
+  op_surrogate_degree_y 0;
+  op_surrogate_degree_z 0;
   op_surrogate_assembly_level 4;
   op_surrogate_use_symmetry true;
 
