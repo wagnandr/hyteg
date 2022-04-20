@@ -91,10 +91,12 @@ std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::
    }
    else if ( domain == "blended_shell_triangle_1" )
    {
-      std::array< hyteg::Point3D, 4 > vertices = { hyteg::Point3D( { 0, 0, -1 } ),
-                                                   hyteg::Point3D( { -0.723607, 0.525731, -0.447214 } ),
-                                                   hyteg::Point3D( { 0.276393, 0.850651, -0.447214 } ),
-                                                   hyteg::Point3D( { 0, 0, -0.5 } ) };
+      std::array< hyteg::Point3D, 4 > vertices = {
+          hyteg::Point3D( { 0, 0, -1 } ),
+          hyteg::Point3D( { -0.723607, 0.525731, -0.447214 } ),
+          hyteg::Point3D( { 0.276393, 0.850651, -0.447214 } ),
+          hyteg::Point3D( { 0, 0, -0.5 } ),
+      };
 
       auto order = createPermutation( parameters.getParameter< uint_t >( "tetrahedron_permutation" ) );
       executePermutation( vertices, order );
@@ -106,6 +108,116 @@ std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::
       setupStorage->setMeshBoundaryFlagsOnBoundary( 1, 0, true );
 
       hyteg::IcosahedralShellMap::setMap( *setupStorage );
+
+      return setupStorage;
+   }
+   else if ( domain == "blended_shell_triangle_2" )
+   {
+
+      auto meshInfoSS = hyteg::MeshInfo::meshSphericalShell( 2, 2, 0.5, 1.0 );
+      hyteg::SetupPrimitiveStorage setupStorageSS( meshInfoSS, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
+      setupStorageSS.setMeshBoundaryFlagsOnBoundary( 3, 0, true );
+
+      if ( parameters.getParameter< bool >( "auto_permutation" ) )
+      {
+         WALBERLA_LOG_INFO_ON_ROOT( "applying auto permutation" );
+         hyteg::StoragePermutator permutator;
+         permutator.permutate_ilu( setupStorageSS );
+      }
+
+      hyteg::IcosahedralShellMap::setMap( setupStorageSS );
+
+      uint_t id = 0;
+      uint_t counter = 0;
+      hyteg::Cell* c;
+      for (auto & cit: setupStorageSS.getCells())
+      {
+         c = cit.second.get();
+         const bool first =  (c->getCoordinates()[0] - hyteg::Point3D({0, 0, -1})).normSq() < 1e-15;
+
+         if (first)
+         {
+            if (counter == id)
+            {
+               WALBERLA_LOG_INFO("found!");
+               break;
+            }
+
+            counter += 1;
+         }
+      }
+
+      std::array< hyteg::Point3D, 4 > vertices = c->getCoordinates();
+
+      // auto order = createPermutation( parameters.getParameter< uint_t >( "tetrahedron_permutation" ) );
+      // executePermutation( vertices, order );
+
+      hyteg::MeshInfo meshInfo = hyteg::MeshInfo::singleTetrahedron( vertices );
+
+      auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
+          meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
+      setupStorage->setMeshBoundaryFlagsOnBoundary( 1, 0, true );
+
+      for (auto & cit: setupStorage->getCells())
+      {
+         auto c2 = cit.second.get();
+
+         setupStorage->setGeometryMap( c2->getID(), c->getGeometryMap() );
+      }
+
+
+
+//         std::array< hyteg::Point3D, 4 > vertices = {
+//                      hyteg::Point3D( { 0, 0, -1 } ),
+//                      hyteg::Point3D( { 0.276393, 0.850651, -0.447214 } ),
+//                      hyteg::Point3D( { 0.894427, 0, -0.447214 } ),
+//                      hyteg::Point3D( { 0, 0, -0.5 } ),
+//                  };
+//                        std::array< hyteg::Point3D, 4 > vertices = {
+//                      hyteg::Point3D( { 0, 0, -1 } ),
+//                      hyteg::Point3D( { -0.723607, 0.525731, -0.447214 } ),
+//                      hyteg::Point3D( { 0.276393, 0.850651, -0.447214 } ),
+//                      hyteg::Point3D( { 0, 0, -0.5 } ),
+//                  };
+//                  std::array< hyteg::Point3D, 4 > vertices = {
+//                      hyteg::Point3D( { 0, 0, -1 } ),
+//                      hyteg::Point3D( { -0.723607, -0.525731, -0.447214 } ),
+//                      hyteg::Point3D( { -0.723607, 0.525731, -0.447214 } ),
+//                      hyteg::Point3D( { 0, 0, -0.5 } ),
+//                  };
+      //      std::array< hyteg::Point3D, 4 > vertices = {
+      //          hyteg::Point3D( { 0, 0, -1 } ),
+      //          hyteg::Point3D( { 0.276393, -0.850651, -0.447214 } ),
+      //          hyteg::Point3D( { -0.723607, -0.525731, -0.447214 } ),
+      //          hyteg::Point3D( { 0, 0, -0.5 } ),
+      //      };
+//      std::array< hyteg::Point3D, 4 > vertices = {
+//          hyteg::Point3D( { 0, 0, -1 } ),
+//          hyteg::Point3D( { 0.894427, 0, -0.447214 } ),
+//          hyteg::Point3D( { 0.276393, -0.850651, -0.447214 } ),
+//          hyteg::Point3D( { 0, 0, -0.5 } ),
+//      };
+
+      /*
+      auto order = createPermutation( parameters.getParameter< uint_t >( "tetrahedron_permutation" ) );
+      executePermutation( vertices, order );
+
+      hyteg::MeshInfo meshInfo = hyteg::MeshInfo::singleTetrahedron( vertices );
+
+      auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
+          meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
+      setupStorage->setMeshBoundaryFlagsOnBoundary( 1, 0, true );
+
+      // workaround permutation has to be fixed before applying the map
+      if ( parameters.getParameter< bool >( "auto_permutation" ) )
+      {
+         WALBERLA_LOG_INFO_ON_ROOT( "applying auto permutation" );
+         hyteg::StoragePermutator permutator;
+         permutator.permutate_ilu( *setupStorage );
+      }
+
+      hyteg::IcosahedralShellMap::setMap( *setupStorage );
+       */
 
       return setupStorage;
    }

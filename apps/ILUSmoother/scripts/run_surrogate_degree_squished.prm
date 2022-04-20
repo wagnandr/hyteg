@@ -2,7 +2,7 @@ Parameters
 {
   minLevel 2;
   maxLevel 6;
-  max_outer_iter 24;
+  max_outer_iter 20;
   max_coarse_iter 100;
   mg_tolerance 1e-14;
   coarse_tolerance 1e-16;
@@ -15,36 +15,31 @@ Parameters
 
   // replaces the zero initial guess with something random
   randomInitialGuess false;
-  powermethod false;
+  powermethod true;
 
   // which solution: zero, sines?
-  // solution_type sines;
-  // solution_type linear_with_coefficient;
-  solution_type linear;
+  solution_type sines;
 
   // for domain tetrahedron;:
   tetrahedron_permutation 0;
   tetrahedron_height 0.1;
 
   // domain squished_cube;
-  // domain two_layer_cube_v2;
-  // domain tetrahedron;
+  domain tetrahedron;
   // domain two_layer_cube;
   // domain tetrahedron_cap;
   // domain tetrahedron_spindle;
   // domain tetrahedron_regular;
   // domain tetrahedron_spade;
-  // domain blended_shell_triangle_1;
-  domain blended_shell_triangle_2;
 
-  // kappa_type unspecified;
-  kappa_type constant;
+  kappa_type unspecified;
+  // kappa_type constant;
   // kappa_type linear;
   // kappa_type quadratic;
   // kappa_type cubic;
 
-  kappa_upper 1.0;
   kappa_lower 1.0;
+  kappa_upper 2.0;
 
   auto_permutation true;
 
@@ -52,26 +47,24 @@ Parameters
   usePCG false;
 
   // which smoother: hyteg_gs, eigen_ilu, inplace_ldlt
-  smoother_type surrogate_ldlt;
+  // smoother_type surrogate_ldlt;
   // smoother_type inplace_ldlt;
-  // smoother_type gs;
+  smoother_type gs;
   // smoother_type cell_gs;
 
-  ilu_surrogate_degree_x 0;
-  ilu_surrogate_degree_y 0;
-  ilu_surrogate_degree_z 10;
-  ilu_surrogate_skip_level 5;
+  ilu_surrogate_degree_x 6;
+  ilu_surrogate_degree_y 6;
+  ilu_surrogate_degree_z 6;
+  ilu_surrogate_skip_level 4;
 
-  ilu_use_boundary_correction false;
-
-  op_surrogate_degree_x 12;
-  op_surrogate_degree_y 12;
-  op_surrogate_degree_z 12;
-  op_surrogate_assembly_level 6;
+  op_surrogate_degree_x 1;
+  op_surrogate_degree_y 1;
+  op_surrogate_degree_z 1;
+  op_surrogate_assembly_level 4;
   op_surrogate_use_symmetry true;
 
-  sm_steps_lower_primitives 10;
-  sm_steps_lower_primitives_backward 10;
+  sm_steps_lower_primitives 1;
+  sm_steps_lower_primitives_backward 1;
 
   // damping factor of the smoother
   relax 1.;

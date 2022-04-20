@@ -29,6 +29,7 @@
 #include "hyteg/p1functionspace/P1Function.hpp"
 #include "hyteg/p1functionspace/P1VariableOperator.hpp"
 #include "hyteg/primitivestorage/PrimitiveStorage.hpp"
+#include "hyteg/elementwiseoperators/P1ElementwiseOperator.hpp"
 
 #include "block_smoother/P1LDLTInplaceCellSmoother.hpp"
 #include "utils/create_domain.hpp"
@@ -62,15 +63,17 @@ int main( int argc, char** argv )
 
    const auto storage = std::make_shared< hyteg::PrimitiveStorage >( *setupStorage );
 
-   using OperatorType = hyteg::P1ConstantLaplaceOperator;
-   using FormType     = hyteg::forms::p1_diffusion_blending_q1;
-   FormType     form;
-   OperatorType laplaceOperator( storage, level, level );
+   using OperatorType = hyteg::P1ElementwiseBlendingDivKGradOperator;
+   using FormType     = hyteg::forms::p1_div_k_grad_blending_q3;
+   FormType     form ([](auto& ){ return 1.; }, [](auto& ){ return 1.; });
+   OperatorType laplaceOperator( storage, level, level, form );
 
-   hyteg::P1LDLTSurrogateCellSmoother< OperatorType, FormType > surrogateSmoother( storage, level, level, degree, form );
-   hyteg::P1LDLTInplaceCellSmoother< OperatorType, FormType >   inplaceSmoother( storage, level, level, form );
+   const std::array< uint_t, 3 >                                      degrees = { degree, degree, degree };
+   hyteg::P1LDLTSurrogateCellSmoother< OperatorType, FormType, true > surrogateSmoother(
+       storage, level, level, degrees, degrees, true, form );
+   hyteg::P1LDLTInplaceCellSmoother< OperatorType, FormType > inplaceSmoother( storage, level, level, form );
 
-   surrogateSmoother.init( skipLevel );
+   surrogateSmoother.init( skipLevel, skipLevel );
    inplaceSmoother.init();
 
    std::vector< hyteg::P1Function< real_t > > u_surr;
@@ -88,19 +91,20 @@ int main( int argc, char** argv )
 
       real_t error_value = std::sqrt( u_error.back().dotGlobal( u_error.back(), level, hyteg::All ) );
 
-      u_error.back().getMaxMagnitude(level, hyteg::All);
+      u_error.back().getMaxMagnitude( level, hyteg::All );
 
-      WALBERLA_LOG_INFO_ON_ROOT( "l2 error " + hyteg::stencilDirectionToStr[d]
-                                 << " " <<  std::scientific << error_value );
+      WALBERLA_LOG_INFO_ON_ROOT( "l2 error " + hyteg::stencilDirectionToStr[d] << " " << std::scientific << error_value );
    }
 
+   /*
    {
       // hack to display the tetrahedron undistorted:
-      hyteg::Cell& c = *( storage->getCells().begin() )->second;
-      auto& coords = const_cast< std::array< hyteg::Point3D, 4 >& >( c.getCoordinates() );
+      hyteg::Cell& c      = *( storage->getCells().begin() )->second;
+      auto&        coords = const_cast< std::array< hyteg::Point3D, 4 >& >( c.getCoordinates() );
       if ( coords[3][2] < 1 )
          coords[3][2] = 1.;
    }
+    */
 
    if ( writeVtk )
    {

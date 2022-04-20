@@ -58,7 +58,7 @@ static void demoProjectNormal( const std::shared_ptr< walberla::config::Config >
 
    if ( use3D )
    {
-      IcosahedralShellMap::setMap( setupStorage );
+      // IcosahedralShellMap::setMap( setupStorage );
    }
    else
    {
@@ -66,6 +66,15 @@ static void demoProjectNormal( const std::shared_ptr< walberla::config::Config >
    }
 
    const auto storage = std::make_shared< PrimitiveStorage >( setupStorage );
+
+   if ( use3D ) {
+      for (auto & cit: storage->getCells())
+      {
+         auto& c = *cit.second;
+         WALBERLA_LOG_INFO( c.getCoordinates()[0] << " " << c.getCoordinates()[1] << " " << c.getCoordinates()[2] << " " << c.getCoordinates()[3] );
+
+      }
+   }
 
    if ( writeVTK )
       writeDomainPartitioningVTK( storage, "./output", filename + "_Domain" );

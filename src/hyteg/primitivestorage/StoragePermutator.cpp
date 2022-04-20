@@ -157,53 +157,53 @@ uint_t StoragePermutator::getMinAngleTriangle( const Cell& cell ) const
 
 real_t StoragePermutator::getHeight( const Cell& cell, uint_t id ) const
 {
-    std::vector< uint_t > triangleVertexIds = getVertexIds( id );
+   std::vector< uint_t > triangleVertexIds = getVertexIds( id );
 
-    auto direction1 = cell.coordinates_[triangleVertexIds[1]] - cell.coordinates_[triangleVertexIds[0]];
-    auto direction2 = cell.coordinates_[triangleVertexIds[2]] - cell.coordinates_[triangleVertexIds[0]];
+   auto direction1 = cell.coordinates_[triangleVertexIds[1]] - cell.coordinates_[triangleVertexIds[0]];
+   auto direction2 = cell.coordinates_[triangleVertexIds[2]] - cell.coordinates_[triangleVertexIds[0]];
 
-    auto normal = crossProduct( direction1, direction2 );
-    normal /= normal.norm();
+   auto normal = crossProduct( direction1, direction2 );
+   normal /= normal.norm();
 
-    auto direction3 = cell.coordinates_[id] - cell.coordinates_[triangleVertexIds[0]];
+   auto direction3 = cell.coordinates_[id] - cell.coordinates_[triangleVertexIds[0]];
 
-    return std::abs(direction3.dot(normal));
+   return std::abs( direction3.dot( normal ) );
 }
 
-uint_t StoragePermutator::getMinHeightBaseTriangle(const Cell& cell) const
+uint_t StoragePermutator::getMinHeightBaseTriangle( const Cell& cell ) const
 {
-    real_t minHeight = getHeight(cell, 0);
-    uint_t minHeightIndex = 0;
-    for ( uint_t i = 0; i < 4; i += 1 )
-    {
-       auto height = getHeight(cell, i);
+   real_t minHeight      = getHeight( cell, 0 );
+   uint_t minHeightIndex = 0;
+   for ( uint_t i = 0; i < 4; i += 1 )
+   {
+      auto height = getHeight( cell, i );
 
-        if ( height <= minHeight )
-        {
-            minHeight = height;
-            minHeightIndex = i;
-        }
-    }
+      if ( height <= minHeight )
+      {
+         minHeight      = height;
+         minHeightIndex = i;
+      }
+   }
 
-    return minHeightIndex;
+   return minHeightIndex;
 }
 
-uint_t StoragePermutator::getMaxHeightBaseTriangle(const Cell& cell) const
+uint_t StoragePermutator::getMaxHeightBaseTriangle( const Cell& cell ) const
 {
-    real_t maxHeight = getHeight(cell, 0);
-    uint_t maxHeightIndex = 0;
-    for ( uint_t i = 0; i < 4; i += 1 )
-    {
-        auto height = getHeight(cell, i);
+   real_t maxHeight      = getHeight( cell, 0 );
+   uint_t maxHeightIndex = 0;
+   for ( uint_t i = 0; i < 4; i += 1 )
+   {
+      auto height = getHeight( cell, i );
 
-        if ( height >= maxHeight )
-        {
-            maxHeight = height;
-            maxHeightIndex = i;
-        }
-    }
+      if ( height >= maxHeight )
+      {
+         maxHeight      = height;
+         maxHeightIndex = i;
+      }
+   }
 
-    return maxHeightIndex;
+   return maxHeightIndex;
 }
 
 void StoragePermutator::permutate_ilu( SetupPrimitiveStorage& storage )
@@ -213,7 +213,7 @@ void StoragePermutator::permutate_ilu( SetupPrimitiveStorage& storage )
       Cell& cell = *cit.second;
 
       // find largest area facet
-      auto maxAreaIndex = getMaxAreaTriangle(cell);
+      auto maxAreaIndex = getMaxAreaTriangle( cell );
       //auto maxAreaIndex = getMaxAngleTriangle(cell);
       // auto maxAreaIndex      = getMinAngleTriangle( cell );
       // auto maxAreaIndex      = getMinHeightBaseTriangle( cell );
@@ -225,17 +225,29 @@ void StoragePermutator::permutate_ilu( SetupPrimitiveStorage& storage )
 
       auto maxElementIdx = static_cast< uint_t >( std::max_element( angles.begin(), angles.end() ) - angles.begin() );
       auto minElementIdx = static_cast< uint_t >( std::min_element( angles.begin(), angles.end() ) - angles.begin() );
-      if ( minElementIdx == maxElementIdx )
-         minElementIdx = ( maxElementIdx + 1 ) % 4;
-      if ( minElementIdx == maxAreaIndex )
-         minElementIdx = ( maxElementIdx + 2 ) % 4;
 
-      const uint_t otherElementIdx = 3 - maxElementIdx - minElementIdx;
+      if ( minElementIdx == maxElementIdx )
+         minElementIdx = ( maxElementIdx + 1 ) % 3;
+
+      uint_t otherElementIdx = 0;
+      for ( uint_t i = 0; i < 3; i += 1 )
+      {
+         if ( minElementIdx == i )
+            continue;
+         else if ( maxElementIdx == i )
+            continue;
+         else
+         {
+            otherElementIdx = i;
+            break;
+         }
+      }
 
       std::array< uint_t, 4 > permutation = {
           maxLocalVertexIds[maxElementIdx], maxLocalVertexIds[minElementIdx], maxLocalVertexIds[otherElementIdx], maxAreaIndex };
 
-      WALBERLA_LOG_INFO_ON_ROOT("Applying permutation (" << permutation[0] << " " << permutation[1] << " " << permutation[2] << " " << permutation[3] << ") to cell " << cell.getID());
+      WALBERLA_LOG_INFO_ON_ROOT( "Applying permutation (" << permutation[0] << " " << permutation[1] << " " << permutation[2]
+                                                          << " " << permutation[3] << ") to cell " << cell.getID() );
 
       permutate( storage, cell, permutation );
    }

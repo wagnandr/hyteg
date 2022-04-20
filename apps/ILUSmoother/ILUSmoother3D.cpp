@@ -45,6 +45,7 @@
 #include "hyteg/solvers/GaussSeidelSmoother.hpp"
 #include "hyteg/solvers/GeometricMultigridSolver.hpp"
 #include "hyteg/solvers/SORSmoother.hpp"
+#include "hyteg/elementwiseoperators/P1ElementwiseOperator.hpp"
 
 #include "block_smoother/GSCellSmoother.hpp"
 #include "block_smoother/GSEdgeSmoother.hpp"
@@ -226,7 +227,7 @@ int main( int argc, char** argv )
    if ( kappa_type == "constant" )
    {
       kappa2d = []( const Point3D& p ) { return 1.; };
-      kappa3d = []( const Point3D& p ) { return 101.; };
+      kappa3d = []( const Point3D& p ) { return 1.; };
    }
    else if ( kappa_type == "linear" )
    {

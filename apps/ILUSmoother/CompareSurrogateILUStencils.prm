@@ -1,14 +1,15 @@
 Parameters
 {
-  level 6;
+  level 5;
   vtk_output true;
 
-  domain tetrahedron;
+  // domain tetrahedron;
+  domain blended_shell_triangle_2;
   tetrahedron_height 0.1;
   tetrahedron_permutation 0;
 
   filename ilu_stencil_deg6;
 
-  degree 6;
-  skip_level 12;
+  degree 12;
+  skip_level 8;
 }
