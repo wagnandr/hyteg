@@ -34,29 +34,17 @@ namespace hyteg {
 
 void StoragePermutator::permutate_randomly( SetupPrimitiveStorage& storage, uint_t seed )
 {
-   if ( storage.getNumberOfCells() > 0 )
-      WALBERLA_ABORT( "permutating primitives does not work in 3D yet" );
-
    // random engine
    std::default_random_engine generator( seed );
 
-   // 2d permutation
-   if ( storage.getNumberOfCells() == 0 )
-   {
-      WALBERLA_ABORT( "not implemented for faces" );
-   }
-   else
-   {
-      // test, we shift the coefficients
-      std::array< uint_t, 4 > permutation_map{ 0, 1, 2, 3 };
+   std::array< uint_t, 4 > permutation_map{ 0, 1, 2, 3 };
 
-      for ( const auto& cit : storage.getCells() )
-      {
-         Cell& cell = *cit.second;
-         std::shuffle( permutation_map.begin(), permutation_map.end(), generator );
-         permutate( storage, cell, permutation_map );
-      };
-   }
+   for ( const auto& cit : storage.getCells() )
+   {
+      Cell& cell = *cit.second;
+      std::shuffle( permutation_map.begin(), permutation_map.end(), generator );
+      permutate( storage, cell, permutation_map );
+   };
 }
 
 std::array< real_t, 3 > StoragePermutator::get_triangle_angles( const Cell& cell, const std::vector< uint_t >& vertexIds ) const
@@ -213,10 +201,10 @@ void StoragePermutator::permutate_ilu( SetupPrimitiveStorage& storage )
       Cell& cell = *cit.second;
 
       // find largest area facet
-      auto maxAreaIndex = getMaxAreaTriangle( cell );
+      // auto maxAreaIndex = getMaxAreaTriangle( cell );
       //auto maxAreaIndex = getMaxAngleTriangle(cell);
       // auto maxAreaIndex      = getMinAngleTriangle( cell );
-      // auto maxAreaIndex      = getMinHeightBaseTriangle( cell );
+      auto maxAreaIndex      = getMinHeightBaseTriangle( cell );
       // auto maxAreaIndex      = getMaxHeightBaseTriangle( cell );
       auto maxLocalVertexIds = getVertexIds( maxAreaIndex );
 
