@@ -1747,6 +1747,97 @@ void apply_full_surrogate_ilu_smoothing_step( LDLTPolynomials&      polynomials_
 } // namespace p1
 } // namespace ldlt
 
+template < typename FormType >
+class P1QSurrogateCellOperator : public Operator< P1Function< real_t >, P1Function< real_t > >
+{
+   using funcType = P1Function< real_t >;
+
+ public:
+   P1QSurrogateCellOperator( const std::shared_ptr< PrimitiveStorage >& storage,
+                             size_t                                     minLevel,
+                             size_t                                     maxLevel,
+                             const FormType&                            form,
+                             bool                                       useSymmetry,
+                             const std::array< uint_t, 3 >&             degrees,
+                             uint_t                                     assemblyLevel )
+   : Operator< P1Function< real_t >, P1Function< real_t > >( storage, minLevel, maxLevel )
+   , form_( form )
+   , useSymmetry_( useSymmetry )
+   , degrees_( degrees )
+   {
+      // storage for surrogate operator
+      std::shared_ptr< ldlt::p1::dim3::LDLTHierachicalPolynomialsDataHandling > polyDataHandlingOp;
+      if ( useSymmetry )
+      {
+         polyDataHandlingOp = std::make_shared< ldlt::p1::dim3::LDLTHierachicalPolynomialsDataHandling >(
+             minLevel_, maxLevel_, degrees, ldlt::p1::dim3::lowerDirectionsAndCenter );
+      }
+      else
+      {
+         polyDataHandlingOp = std::make_shared< ldlt::p1::dim3::LDLTHierachicalPolynomialsDataHandling >(
+             minLevel_, maxLevel_, degrees, ldlt::p1::dim3::allDirections );
+      }
+      storage_->addCellData( opPolynomialsID_, polyDataHandlingOp, "P1QSurrogateCellOperator" );
+
+      WALBERLA_CHECK_LESS( storage_->getNumberOfGlobalCells(), 2 );
+      for ( uint_t level = minLevel; level <= maxLevel; level += 1 )
+      {
+         for ( auto& cit : storage_->getCells() )
+         {
+            factorize_op_matrix_inplace( level, *cit.second, form_, assemblyLevel );
+         }
+      }
+   }
+
+   void apply( const funcType& src,
+               const funcType& dst,
+               size_t          level,
+               DoFType         flag,
+               UpdateType      updateType = Replace ) const override final
+   {
+      WALBERLA_CHECK_EQUAL(updateType, Replace );
+
+      src.template communicate< Vertex, Edge > (level);
+      src.template communicate< Edge, Face > (level);
+      src.template communicate< Face, Cell > (level);
+
+      for ( auto cit : storage_->getCells() )
+      {
+         Cell& cell        = *cit.second;
+         auto& polynomials = cell.getData( opPolynomialsID_ )->getLevel( level );
+         ldlt::p1::dim3::apply_surrogate_operator( polynomials, level, useSymmetry_, cell, src, dst );
+      }
+   }
+
+ private:
+   void factorize_op_matrix_inplace( uint_t level, Cell& cell, FormType& form, uint_t coarseLevel )
+   {
+      std::unique_ptr< ldlt::p1::dim3::Interpolators > interpolators( nullptr );
+      if ( useSymmetry_ )
+      {
+         interpolators = std::make_unique< ldlt::p1::dim3::Interpolators >( degrees_, ldlt::p1::dim3::lowerDirectionsAndCenter );
+      }
+      else
+      {
+         interpolators = std::make_unique< ldlt::p1::dim3::Interpolators >( degrees_, ldlt::p1::dim3::allDirections );
+      }
+
+      ldlt::p1::dim3::assemble_surrogate_operator( form, cell, coarseLevel, level, *interpolators );
+
+      auto& polynomials = cell.getData( opPolynomialsID_ )->getLevel( level );
+
+      interpolators->interpolate( polynomials );
+   }
+
+ private:
+   FormType form_;
+
+   bool                    useSymmetry_;
+   std::array< uint_t, 3 > degrees_;
+
+   PrimitiveDataID< ldlt::p1::dim3::LDLTHierachicalPolynomials, Cell > opPolynomialsID_;
+};
+
 template < class OperatorType, class FormType, bool useBoundaryCorrection = false >
 class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
 {

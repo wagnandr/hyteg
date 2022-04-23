@@ -45,7 +45,6 @@
 #include "hyteg/solvers/GaussSeidelSmoother.hpp"
 #include "hyteg/solvers/GeometricMultigridSolver.hpp"
 #include "hyteg/solvers/SORSmoother.hpp"
-#include "hyteg/elementwiseoperators/P1ElementwiseOperator.hpp"
 
 #include "block_smoother/GSCellSmoother.hpp"
 #include "block_smoother/GSEdgeSmoother.hpp"
@@ -328,7 +327,7 @@ int main( int argc, char** argv )
    {
       boundaryConditions = []( const hyteg::Point3D& p ) { return 2 * p[0] - p[1] + 0.5 * p[2]; };
 
-      kappa3d = []( const hyteg::Point3D& p ) { return 1.; };
+      kappa3d       = []( const hyteg::Point3D& p ) { return 1.; };
       rhsFunctional = []( const hyteg::Point3D& ) { return 0.; };
    }
    else if ( solution_type == "zero" || powermethod )
@@ -356,18 +355,6 @@ int main( int argc, char** argv )
                      All ^ DirichletBoundary );
    }
 
-   //using OperatorType = hyteg::P1ConstantLaplaceOperator;
-   // using OperatorType = hyteg::P1BlendingLaplaceOperator;
-   // using FormType = hyteg::forms::p1_diffusion_blending_q1;
-   //using FormType = P1FenicsForm< p1_diffusion_cell_integral_0_otherwise, p1_tet_diffusion_cell_integral_0_otherwise >;
-   //FormType     form;
-   //OperatorType laplaceOperator( storage, minLevel, maxLevel );
-
-   // using OperatorType = hyteg::P1BlendingLaplaceOperator;
-   // using OperatorType = hyteg::P1AffineDivkGradOperator;
-   using OperatorType = P1ElementwiseBlendingDivKGradOperator;
-   using FormType     = forms::p1_div_k_grad_blending_q3;
-   //using FormType = forms::p1_div_k_grad_affine_q3;
 
    if ( domain == "two_layer_cube" )
    {
@@ -400,8 +387,32 @@ int main( int argc, char** argv )
       };
    }
 
+   //using OperatorType = hyteg::P1ConstantLaplaceOperator;
+   // using OperatorType = hyteg::P1BlendingLaplaceOperator;
+   // using FormType = hyteg::forms::p1_diffusion_blending_q1;
+   //using FormType = P1FenicsForm< p1_diffusion_cell_integral_0_otherwise, p1_tet_diffusion_cell_integral_0_otherwise >;
+   //FormType     form;
+   //OperatorType laplaceOperator( storage, minLevel, maxLevel );
+
+   using FormType     = forms::p1_div_k_grad_blending_q3;
+   // using OperatorType = hyteg::P1BlendingLaplaceOperator;
+   // using OperatorType = hyteg::P1AffineDivkGradOperator;
+   // using OperatorType = P1ElementwiseBlendingDivKGradOperator;
+   using OperatorType = P1QSurrogateCellOperator< FormType >;
+   //using FormType = forms::p1_div_k_grad_affine_q3;
+
    FormType     form( kappa3d, kappa2d );
-   OperatorType laplaceOperator( storage, minLevel, maxLevel, form );
+   // OperatorType laplaceOperator( storage, minLevel, maxLevel, form );
+
+   const uint_t opDegreeX     = parameters.getParameter< uint_t >( "op_surrogate_degree_x" );
+   const uint_t opDegreeY     = parameters.getParameter< uint_t >( "op_surrogate_degree_y" );
+   const uint_t opDegreeZ     = parameters.getParameter< uint_t >( "op_surrogate_degree_z" );
+   const uint_t assemblyLevel = parameters.getParameter< uint_t >( "op_surrogate_assembly_level" );
+   const bool   symmetry      = parameters.getParameter< bool >( "op_surrogate_use_symmetry" );
+
+   const std::array< uint_t, 3 > opDegrees = { opDegreeX, opDegreeY, opDegreeZ };
+
+   P1QSurrogateCellOperator< FormType > laplaceOperator( storage, minLevel, maxLevel, form, symmetry, opDegrees, assemblyLevel );
 
    std::shared_ptr< hyteg::Solver< OperatorType > > smoother =
        createSmoother3D< OperatorType, FormType >( parameters, laplaceOperator, form );
