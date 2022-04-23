@@ -114,7 +114,7 @@ std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::
    else if ( domain == "blended_shell_triangle_2" )
    {
 
-      auto meshInfoSS = hyteg::MeshInfo::meshSphericalShell( 2, 2, 0.5, 1.0 );
+      auto meshInfoSS = hyteg::MeshInfo::meshSphericalShell( 2, 2, 0.8, 1.0 );
       hyteg::SetupPrimitiveStorage setupStorageSS( meshInfoSS, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
       setupStorageSS.setMeshBoundaryFlagsOnBoundary( 3, 0, true );
 
@@ -127,15 +127,22 @@ std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::
 
       hyteg::IcosahedralShellMap::setMap( setupStorageSS );
 
+      const auto cellHasPoint = [](const hyteg::Point3D & p, const hyteg::Cell& c, const real_t tol = 1e-15) {
+        const bool one =  (c.getCoordinates()[0] - p).normSq() < tol;
+        const bool two =  (c.getCoordinates()[1] - p).normSq() < tol;
+        const bool three =  (c.getCoordinates()[2] - p).normSq() < tol;
+        const bool four =  (c.getCoordinates()[3] - p).normSq() < tol;
+        return one || two || three || four;
+      };
+
       uint_t id = 0;
       uint_t counter = 0;
       hyteg::Cell* c;
       for (auto & cit: setupStorageSS.getCells())
       {
          c = cit.second.get();
-         const bool first =  (c->getCoordinates()[0] - hyteg::Point3D({0, 0, -1})).normSq() < 1e-15;
 
-         if (first)
+         if (cellHasPoint(hyteg::Point3D({0, 0, -1}), *c) && cellHasPoint(hyteg::Point3D( { 0, 0, -0.5 } ), *c))
          {
             if (counter == id)
             {
@@ -146,6 +153,9 @@ std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::
             counter += 1;
          }
       }
+
+      hyteg::PrimitiveStorage storageSS(setupStorageSS);
+      hyteg::writeDomainPartitioningVTK( storageSS, "./output", "SphericalShell" );
 
       std::array< hyteg::Point3D, 4 > vertices = c->getCoordinates();
 
