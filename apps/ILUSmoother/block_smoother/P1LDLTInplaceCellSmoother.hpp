@@ -771,6 +771,54 @@ class PolyStencil
    std::vector< real_t > offsetsZ_;
 };
 
+template < typename FormType >
+class AssembledStencil
+{
+ public:
+   AssembledStencil( uint_t level, const Cell& cell, const FormType& form )
+   : level_( level )
+   , point_( 0, 0, 0 )
+   , h_( 1. / real_c( levelinfo::num_microedges_per_edge( level ) ) )
+   , cell_( cell )
+   , form_( form )
+   {
+      form_.setGeometryMap( cell.getGeometryMap() );
+   }
+
+   void setY( real_t y ) { point_[1] = uint_c( std::round( y / h_ ) ); }
+
+   void setZ( real_t z ) { point_[2] = uint_c( std::round( z / h_ ) ); }
+
+   void setStartX( real_t x, real_t h, std::map< SD, real_t >& stencil )
+   {
+      h_        = h;
+      point_[0] = uint_c( std::round( x / h_ ) );
+      assemble( stencil );
+   }
+
+   void incrementEval( std::map< SD, real_t >& stencil )
+   {
+      point_[0] += 1;
+      assemble( stencil );
+   };
+
+   void assemble( std::map< SD, real_t >& stencil )
+   {
+      stencil = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( point_, cell_, level_, form_ );
+   }
+
+ private:
+   uint_t level_;
+
+   indexing::Index point_;
+
+   real_t h_;
+
+   const Cell cell_;
+
+   FormType form_;
+};
+
 void compare_stencil_vs_polynomial( uint_t                  x,
                                     uint_t                  y,
                                     uint_t                  z,
@@ -1279,16 +1327,18 @@ void apply_surrogate_substitutions( LDLTBoundaryStencils& boundaryStencils,
    }
 }
 
-template < typename FunctionType, bool useBoundaryCorrection = false, bool useMatrixBoundaryValuesInInnerRegion = false >
-void apply_full_surrogate_ilu_smoothing_step( LDLTPolynomials&      polynomials_a,
-                                              LDLTPolynomials&      polynomials_l,
-                                              LDLTBoundaryStencils& boundaryStencils,
-                                              uint_t                level,
-                                              bool                  symmetric,
-                                              Cell&                 cell,
-                                              const FunctionType&   u_function,
-                                              const FunctionType&   w_function,
-                                              const FunctionType&   b_function )
+template < typename FunctionType,
+           typename OpStencilProviderType,
+           bool useBoundaryCorrection                = false,
+           bool useMatrixBoundaryValuesInInnerRegion = false >
+void apply_full_surrogate_ilu_smoothing_step( OpStencilProviderType& opStencilProvider,
+                                              LDLTPolynomials&       polynomials_l,
+                                              LDLTBoundaryStencils&  boundaryStencils,
+                                              uint_t                 level,
+                                              Cell&                  cell,
+                                              const FunctionType&    u_function,
+                                              const FunctionType&    w_function,
+                                              const FunctionType&    b_function )
 {
    const auto cidx = [level]( uint_t x, uint_t y, uint_t z, SD dir ) {
       return vertexdof::macrocell::indexFromVertex( level, x, y, z, dir );
@@ -1386,28 +1436,23 @@ void apply_full_surrogate_ilu_smoothing_step( LDLTPolynomials&      polynomials_
       poly_stencil_lower.setPolynomial( polynomials_l );
       std::map< SD, real_t > l_stencil;
 
-      PolyStencil< 15 > poly_stencil_a( polynomials_a.getDegrees(), allDirections );
-      if ( symmetric )
-         poly_stencil_a.setPolynomialSymmetrical( polynomials_a, h );
-      else
-         poly_stencil_a.setPolynomial( polynomials_a );
       std::map< SD, real_t > a_stencil;
 
       // z bottom:
       for ( uint_t z = 1; z < 1 + boundarySize; z += 1 )
       {
          poly_stencil_lower.setZ( h * real_c( z ) );
-         poly_stencil_a.setZ( h * real_c( z ) );
+         opStencilProvider.setZ( h * real_c( z ) );
          for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
          {
             poly_stencil_lower.setY( h * real_c( y ) );
             poly_stencil_lower.setStartX( h * real_c( 1 - 1 ), h, l_stencil );
-            poly_stencil_a.setY( h * real_c( y ) );
-            poly_stencil_a.setStartX( h * real_c( 1 - 1 ), h, a_stencil );
+            opStencilProvider.setY( h * real_c( y ) );
+            opStencilProvider.setStartX( h * real_c( 1 - 1 ), h, a_stencil );
             for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
             {
                // residual:
-               poly_stencil_a.incrementEval( a_stencil );
+               opStencilProvider.incrementEval( a_stencil );
                calc_residual( x, y, z, a_stencil, u, b, w );
                // substitution:
                poly_stencil_lower.incrementEval( l_stencil );
@@ -1424,18 +1469,18 @@ void apply_full_surrogate_ilu_smoothing_step( LDLTPolynomials&      polynomials_
       for ( uint_t z = 1 + boundarySize; z <= N_edge - 2 - boundarySize; z += 1 )
       {
          poly_stencil_lower.setZ( h * real_c( z ) );
-         poly_stencil_a.setZ( h * real_c( z ) );
+         opStencilProvider.setZ( h * real_c( z ) );
          // y south:
          for ( uint_t y = 1; y < 1 + boundarySize; y += 1 )
          {
             poly_stencil_lower.setY( h * real_c( y ) );
             poly_stencil_lower.setStartX( h * real_c( 1 - 1 ), h, l_stencil );
-            poly_stencil_a.setY( h * real_c( y ) );
-            poly_stencil_a.setStartX( h * real_c( 1 - 1 ), h, a_stencil );
+            opStencilProvider.setY( h * real_c( y ) );
+            opStencilProvider.setStartX( h * real_c( 1 - 1 ), h, a_stencil );
             for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
             {
                // residual:
-               poly_stencil_a.incrementEval( a_stencil );
+               opStencilProvider.incrementEval( a_stencil );
                calc_residual( x, y, z, a_stencil, u, b, w );
                // substitution:
                poly_stencil_lower.incrementEval( l_stencil );
@@ -1452,13 +1497,13 @@ void apply_full_surrogate_ilu_smoothing_step( LDLTPolynomials&      polynomials_
          {
             poly_stencil_lower.setY( h * real_c( y ) );
             poly_stencil_lower.setStartX( h * real_c( 1 - 1 ), h, l_stencil );
-            poly_stencil_a.setY( h * real_c( y ) );
-            poly_stencil_a.setStartX( h * real_c( 1 - 1 ), h, a_stencil );
+            opStencilProvider.setY( h * real_c( y ) );
+            opStencilProvider.setStartX( h * real_c( 1 - 1 ), h, a_stencil );
             // x west:
             for ( uint_t x = 1; x < 1 + boundarySize; x += 1 )
             {
                // residual:
-               poly_stencil_a.incrementEval( a_stencil );
+               opStencilProvider.incrementEval( a_stencil );
                calc_residual( x, y, z, a_stencil, u, b, w );
                // substitution:
                poly_stencil_lower.incrementEval( l_stencil );
@@ -1473,7 +1518,7 @@ void apply_full_surrogate_ilu_smoothing_step( LDLTPolynomials&      polynomials_
             for ( uint_t x = 1 + boundarySize; x <= N_edge - 2 - boundarySize - z - y; x += 1 )
             {
                // residual:
-               poly_stencil_a.incrementEval( a_stencil );
+               opStencilProvider.incrementEval( a_stencil );
                calc_residual( x, y, z, a_stencil, u, b, w );
                // substitution:
                poly_stencil_lower.incrementEval( l_stencil );
@@ -1486,7 +1531,7 @@ void apply_full_surrogate_ilu_smoothing_step( LDLTPolynomials&      polynomials_
             for ( uint_t x = std::max( 1 + boundarySize, N_edge - 1 - boundarySize - z - y ); x <= N_edge - 2 - z - y; x += 1 )
             {
                // residual:
-               poly_stencil_a.incrementEval( a_stencil );
+               opStencilProvider.incrementEval( a_stencil );
                calc_residual( x, y, z, a_stencil, u, b, w );
                // substitution:
                poly_stencil_lower.incrementEval( l_stencil );
@@ -1503,12 +1548,12 @@ void apply_full_surrogate_ilu_smoothing_step( LDLTPolynomials&      polynomials_
          {
             poly_stencil_lower.setY( h * real_c( y ) );
             poly_stencil_lower.setStartX( h * real_c( 1 - 1 ), h, l_stencil );
-            poly_stencil_a.setY( h * real_c( y ) );
-            poly_stencil_a.setStartX( h * real_c( 1 - 1 ), h, a_stencil );
+            opStencilProvider.setY( h * real_c( y ) );
+            opStencilProvider.setStartX( h * real_c( 1 - 1 ), h, a_stencil );
             for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
             {
                // residual:
-               poly_stencil_a.incrementEval( a_stencil );
+               opStencilProvider.incrementEval( a_stencil );
                calc_residual( x, y, z, a_stencil, u, b, w );
                // substitution:
                poly_stencil_lower.incrementEval( l_stencil );
@@ -1525,17 +1570,17 @@ void apply_full_surrogate_ilu_smoothing_step( LDLTPolynomials&      polynomials_
       for ( uint_t z = std::max( 1 + boundarySize, N_edge - 1 - boundarySize ); z <= N_edge - 2; z += 1 )
       {
          poly_stencil_lower.setZ( h * real_c( z ) );
-         poly_stencil_a.setZ( h * real_c( z ) );
+         opStencilProvider.setZ( h * real_c( z ) );
          for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
          {
             poly_stencil_lower.setY( h * real_c( y ) );
             poly_stencil_lower.setStartX( h * real_c( 1 - 1 ), h, l_stencil );
-            poly_stencil_a.setY( h * real_c( y ) );
-            poly_stencil_a.setStartX( h * real_c( 1 - 1 ), h, a_stencil );
+            opStencilProvider.setY( h * real_c( y ) );
+            opStencilProvider.setStartX( h * real_c( 1 - 1 ), h, a_stencil );
             for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
             {
                // residual:
-               poly_stencil_a.incrementEval( a_stencil );
+               opStencilProvider.incrementEval( a_stencil );
                calc_residual( x, y, z, a_stencil, u, b, w );
                // substitution:
                poly_stencil_lower.incrementEval( l_stencil );
@@ -2061,8 +2106,23 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
       auto& polynomial_l = cell.getData( ldltPolynomialsID_ )->getLevel( level );
       auto& boundary     = cell.getData( boundaryID_ )->getLevel( level );
 
-      ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step< typename OperatorType::srcType, useBoundaryCorrection >(
-          polynomial_a, polynomial_l, boundary, level, useSymmetryOfOperator_, cell, u, tmp2_, b );
+      const real_t h = 1. / real_c( levelinfo::num_microedges_per_edge( level ) );
+
+      /*
+      using StencilProviderType = ldlt::p1::dim3::PolyStencil< 15 >;
+      StencilProviderType poly_stencil_a( polynomial_a.getDegrees(), ldlt::p1::dim3::allDirections );
+      if ( useSymmetryOfOperator_ )
+         poly_stencil_a.setPolynomialSymmetrical( polynomial_a, h );
+      else
+         poly_stencil_a.setPolynomial( polynomial_a );
+      */
+
+      using StencilProviderType = ldlt::p1::dim3::AssembledStencil< FormType >;
+      StencilProviderType opStencilProvider( level, cell, form_ );
+
+      ldlt::p1::dim3::
+          apply_full_surrogate_ilu_smoothing_step< typename OperatorType::srcType, StencilProviderType, useBoundaryCorrection >(
+              opStencilProvider, polynomial_l, boundary, level, cell, u, tmp2_, b );
    }
 
    void smooth_backwards( const OperatorType&                   A,

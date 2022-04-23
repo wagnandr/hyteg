@@ -355,7 +355,6 @@ int main( int argc, char** argv )
                      All ^ DirichletBoundary );
    }
 
-
    if ( domain == "two_layer_cube" )
    {
       const real_t kappa_lower = parameters.getParameter< real_t >( "kappa_lower" );
@@ -394,15 +393,14 @@ int main( int argc, char** argv )
    //FormType     form;
    //OperatorType laplaceOperator( storage, minLevel, maxLevel );
 
-   using FormType     = forms::p1_div_k_grad_blending_q3;
+   using FormType = forms::p1_div_k_grad_blending_q3;
    // using OperatorType = hyteg::P1BlendingLaplaceOperator;
    // using OperatorType = hyteg::P1AffineDivkGradOperator;
-   // using OperatorType = P1ElementwiseBlendingDivKGradOperator;
-   using OperatorType = P1QSurrogateCellOperator< FormType >;
+   using OperatorType = P1ElementwiseBlendingDivKGradOperator;
+   // using OperatorType = P1QSurrogateCellOperator< FormType >;
    //using FormType = forms::p1_div_k_grad_affine_q3;
 
-   FormType     form( kappa3d, kappa2d );
-   // OperatorType laplaceOperator( storage, minLevel, maxLevel, form );
+   FormType form( kappa3d, kappa2d );
 
    const uint_t opDegreeX     = parameters.getParameter< uint_t >( "op_surrogate_degree_x" );
    const uint_t opDegreeY     = parameters.getParameter< uint_t >( "op_surrogate_degree_y" );
@@ -412,7 +410,8 @@ int main( int argc, char** argv )
 
    const std::array< uint_t, 3 > opDegrees = { opDegreeX, opDegreeY, opDegreeZ };
 
-   P1QSurrogateCellOperator< FormType > laplaceOperator( storage, minLevel, maxLevel, form, symmetry, opDegrees, assemblyLevel );
+   // P1QSurrogateCellOperator< FormType > laplaceOperator( storage, minLevel, maxLevel, form, symmetry, opDegrees, assemblyLevel );
+   OperatorType laplaceOperator( storage, minLevel, maxLevel, form );
 
    std::shared_ptr< hyteg::Solver< OperatorType > > smoother =
        createSmoother3D< OperatorType, FormType >( parameters, laplaceOperator, form );
