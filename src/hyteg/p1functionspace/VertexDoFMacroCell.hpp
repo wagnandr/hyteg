@@ -66,14 +66,20 @@ inline indexing::Index getIndexInNeighboringMacroFace( const indexing::Index&  v
    return indexInMacroFace;
 }
 
-inline Point3D coordinateFromIndex( const uint_t& level, const Cell& cell, const Index& index )
+inline Point3D coordinateFromIndex( const uint_t& level, const std::array< Point3D, 4 >& coordinates, const Index& index )
 {
    const real_t  stepFrequency = 1.0 / levelinfo::num_microedges_per_edge( level );
-   const Point3D xStep         = ( cell.getCoordinates()[1] - cell.getCoordinates()[0] ) * stepFrequency;
-   const Point3D yStep         = ( cell.getCoordinates()[2] - cell.getCoordinates()[0] ) * stepFrequency;
-   const Point3D zStep         = ( cell.getCoordinates()[3] - cell.getCoordinates()[0] ) * stepFrequency;
-   return cell.getCoordinates()[0] + xStep * real_c( index.x() ) + yStep * real_c( index.y() ) + zStep * real_c( index.z() );
+   const Point3D xStep         = ( coordinates[1] - coordinates[0] ) * stepFrequency;
+   const Point3D yStep         = ( coordinates[2] - coordinates[0] ) * stepFrequency;
+   const Point3D zStep         = ( coordinates[3] - coordinates[0] ) * stepFrequency;
+   return coordinates[0] + xStep * real_c( index.x() ) + yStep * real_c( index.y() ) + zStep * real_c( index.z() );
 }
+
+inline Point3D coordinateFromIndex( const uint_t& level, const Cell& cell, const Index& index )
+{
+   return coordinateFromIndex( level, cell.getCoordinates(), index );
+}
+
 
 template < typename ValueType >
 inline void interpolate( const uint_t&                                               level,

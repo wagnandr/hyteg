@@ -426,6 +426,54 @@ inline std::map< stencilDirection, real_t > calculateStencilInMacroCellForm( con
   return macroCellStencilEntries;
 }
 
+template< class P1Form >
+inline std::map< stencilDirection, real_t > calculateStencilInMacroCellForm_new( const indexing::Index & microVertexIndex, const std::array< Point3D, 4> & coordinates,
+                                                                                 const uint_t & level, P1Form & form )
+{
+   std::map< stencilDirection, real_t > macroCellStencilEntries;
+
+   const auto neighboringElements = getNeighboringElements( microVertexIndex, level );
+
+   // 1. Going over all neighboring cells of a micro-vertex
+   //    A neighboring cell is defined by a 4-tuple of (different) stencil directions with one of them being VERTEX_C.
+   //    VERTEX_C represents the reference micro-vertex.
+   for ( const auto & cellAtVertex : neighboringElements )
+   {
+      WALBERLA_ASSERT_EQUAL( cellAtVertex[0], sd::VERTEX_C );
+
+      // 2. Collecting the logical index offsets of each micro-vertex of the current neighboring cell from the reference micro-vertex
+      std::array< indexing::Index, 4 > logicalOffsetsFromCenter;
+      for ( uint_t localID = 0; localID < 4; localID++ ) {
+         logicalOffsetsFromCenter[localID] = microVertexIndex + vertexdof::logicalIndexOffsetFromVertex( cellAtVertex[localID] );
+      }
+
+      // 3. Calculating the absolute offsets of each micro-vertex of the current cell from the reference micro-vertex
+      std::array< Point3D, 4 > geometricCoordinates;
+      for ( uint_t localID = 0; localID < 4; localID++ ) {
+         geometricCoordinates[localID] = vertexdof::macrocell::coordinateFromIndex( level, coordinates, logicalOffsetsFromCenter[localID] );
+      }
+
+      // 4. Computing the local stiffness matrix
+      Matrixr<1,4> localStiffnessMatrixRow;
+      form.integrateRow(0, geometricCoordinates, localStiffnessMatrixRow );
+      // std::cout << " " << localStiffnessMatrixRow(0,0);
+
+      // 5. Adding contribution to stencil
+      //    Since we enforced that the first entry in the local cell micro-vertex array is always the reference micro-vertex
+      //    we only need to get the result of the form integrator which gives us the first row of the local stiffness matrix
+      for ( uint_t localID = 0; localID < 4; localID++ )
+      {
+         const stencilDirection stencilDir = cellAtVertex[ localID ];
+         if ( macroCellStencilEntries.count( stencilDir ) == 0 )
+         {
+            macroCellStencilEntries[ stencilDir ] = real_c( 0 );
+         }
+         macroCellStencilEntries[ stencilDir ] += real_c( localStiffnessMatrixRow(0,localID) );
+      }
+   }
+   return macroCellStencilEntries;
+}
+
 // as above but using the new integrateRow()-interface. Old version is kept for legacy purposes, e.g., P2 Operators.
 // todo: remove old version once all Operators are renewed
 /// \brief Calculates the stencil weights from the stiffness matrices of neighboring elements at an index in a macro-cell.
@@ -445,49 +493,7 @@ inline std::map< stencilDirection, real_t > calculateStencilInMacroCellForm_new(
                                                                              const uint_t & level, P1Form & form )
 {
   form.setGeometryMap(cell.getGeometryMap());
-
-  std::map< stencilDirection, real_t > macroCellStencilEntries;
-
-  const auto neighboringElements = getNeighboringElements( microVertexIndex, level );
-
-  // 1. Going over all neighboring cells of a micro-vertex
-  //    A neighboring cell is defined by a 4-tuple of (different) stencil directions with one of them being VERTEX_C.
-  //    VERTEX_C represents the reference micro-vertex.
-  for ( const auto & cellAtVertex : neighboringElements )
-  {
-    WALBERLA_ASSERT_EQUAL( cellAtVertex[0], sd::VERTEX_C );
-
-    // 2. Collecting the logical index offsets of each micro-vertex of the current neighboring cell from the reference micro-vertex
-    std::array< indexing::Index, 4 > logicalOffsetsFromCenter;
-    for ( uint_t localID = 0; localID < 4; localID++ ) {
-      logicalOffsetsFromCenter[localID] = microVertexIndex + vertexdof::logicalIndexOffsetFromVertex( cellAtVertex[localID] );
-    }
-
-    // 3. Calculating the absolute offsets of each micro-vertex of the current cell from the reference micro-vertex
-    std::array< Point3D, 4 > geometricCoordinates;
-    for ( uint_t localID = 0; localID < 4; localID++ ) {
-      geometricCoordinates[localID] = vertexdof::macrocell::coordinateFromIndex( level, cell, logicalOffsetsFromCenter[localID] );
-    }
-
-    // 4. Computing the local stiffness matrix
-    Matrixr<1,4> localStiffnessMatrixRow;
-    form.integrateRow(0, geometricCoordinates, localStiffnessMatrixRow );
-    // std::cout << " " << localStiffnessMatrixRow(0,0);
-
-    // 5. Adding contribution to stencil
-    //    Since we enforced that the first entry in the local cell micro-vertex array is always the reference micro-vertex
-    //    we only need to get the result of the form integrator which gives us the first row of the local stiffness matrix
-    for ( uint_t localID = 0; localID < 4; localID++ )
-    {
-      const stencilDirection stencilDir = cellAtVertex[ localID ];
-      if ( macroCellStencilEntries.count( stencilDir ) == 0 )
-      {
-        macroCellStencilEntries[ stencilDir ] = real_c( 0 );
-      }
-      macroCellStencilEntries[ stencilDir ] += real_c( localStiffnessMatrixRow(0,localID) );
-    }
-  }
-  return macroCellStencilEntries;
+  return calculateStencilInMacroCellForm_new( microVertexIndex, cell.getCoordinates(), level, form );
 }
 
 

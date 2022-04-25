@@ -176,8 +176,8 @@ std::map< SD, real_t > calculateAsymptoticLDLTStencil( std::map< SD, real_t >& a
    l_stencil_next[SD::VERTEX_C] = 1.;
 
    // asymptotic iteration:
-   real_t last_diff = 0;
-   const uint_t maxIter = 10000;
+   real_t       last_diff = 0;
+   const uint_t maxIter   = 10000;
    for ( uint_t i = 0; i < maxIter; i += 1 )
    {
       const real_t a_bc  = a_stencil[SD::VERTEX_BC];
@@ -257,7 +257,8 @@ std::map< SD, real_t > calculateAsymptoticLDLTStencil( std::map< SD, real_t >& a
          return l_stencil_prev;
       }
    }
-   WALBERLA_ABORT( "Could not find asymptotic stencil. Last difference was " << last_diff << " after " << maxIter << " iterations." );
+   WALBERLA_ABORT( "Could not find asymptotic stencil. Last difference was " << last_diff << " after " << maxIter
+                                                                             << " iterations." );
 }
 
 std::complex< real_t >
@@ -305,12 +306,12 @@ std::map< SD, real_t > prepare_d_stencil( std::map< SD, real_t >& asymptotic_ste
    return d_stencil;
 }
 
-std::array< real_t, 3 > getMicroEdgeWidths( const Cell& cell, uint_t level )
+std::array< real_t, 3 > getMicroEdgeWidths( const std::array< hyteg::Point3D, 4 >& coordinates, uint_t level )
 {
    auto                    N  = real_c( levelinfo::num_microedges_per_edge( level ) );
-   real_t                  h1 = ( cell.getCoordinates()[1] - cell.getCoordinates()[0] ).norm() / N;
-   real_t                  h2 = ( cell.getCoordinates()[2] - cell.getCoordinates()[0] ).norm() / N;
-   real_t                  h3 = ( cell.getCoordinates()[3] - cell.getCoordinates()[0] ).norm() / N;
+   real_t                  h1 = ( coordinates[1] - coordinates[0] ).norm() / N;
+   real_t                  h2 = ( coordinates[2] - coordinates[0] ).norm() / N;
+   real_t                  h3 = ( coordinates[3] - coordinates[0] ).norm() / N;
    std::array< real_t, 3 > h  = { h1, h2, h3 };
    return h;
 }
@@ -329,7 +330,7 @@ real_t estimateAsymptoticSmootherRateGS( const Cell& cell, uint_t level, FormTyp
    for ( auto d : lowerDirectionsAndCenter )
       u_stencil[d] = 0;
 
-   const auto h = ldlt::p1::dim3::getMicroEdgeWidths( cell, level );
+   const auto h = ldlt::p1::dim3::getMicroEdgeWidths( cell.getCoordinates(), level );
 
    // calculate symbols
    /*
@@ -409,13 +410,12 @@ real_t estimateAsymptoticSmootherRateGS( const Cell& cell, uint_t level, FormTyp
 }
 
 template < typename FormType >
-real_t estimateAsymptoticSmootherRate( const Cell& cell, uint_t level, FormType form )
+real_t estimateAsymptoticSmootherRate( const std::array< Point3D, 4 >& coordinates, uint_t level, FormType form )
 {
-   form.setGeometryMap( cell.getGeometryMap() );
-   auto a_stencil            = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { 2, 2, 2 }, cell, level, form );
+   auto a_stencil = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { 2, 2, 2 }, coordinates, level, form );
    auto l_stencil_asymptotic = ldlt::p1::dim3::calculateAsymptoticLDLTStencil( a_stencil );
 
-   const auto h = ldlt::p1::dim3::getMicroEdgeWidths( cell, level );
+   const auto h = ldlt::p1::dim3::getMicroEdgeWidths( coordinates, level );
 
    // calculate symbols
    auto l_stencil  = ldlt::p1::dim3::prepare_l_stencil( l_stencil_asymptotic );
@@ -679,8 +679,8 @@ real_t estimateAsymptoticTwoGridRate( const Cell& cell, uint_t level, FormType f
    auto d_stencil               = ldlt::p1::dim3::prepare_d_stencil( asymptotic_ldlt_stencil );
 
    // TODO
-   auto h        = getMicroEdgeWidths( cell, level );
-   auto h_coarse = getMicroEdgeWidths( cell, level - 1 );
+   auto h        = getMicroEdgeWidths( cell.getCoordinates(), level );
+   auto h_coarse = getMicroEdgeWidths( cell.getCoordinates(), level - 1 );
 
    int    num_samples_half    = 16;
    int    num_samples         = 2 * num_samples_half;
@@ -712,7 +712,7 @@ real_t estimateAsymptoticTwoGridRate( const Cell& cell, uint_t level, FormType f
 
             Eigen::MatrixXcd restriction = getRestrictionTwoGridMatrix( theta, h );
             // WALBERLA_LOG_INFO_ON_ROOT("restriction " << restriction);
-            Eigen::MatrixXcd interpolation = (1/8.) * restriction.transpose().conjugate();
+            Eigen::MatrixXcd interpolation = ( 1 / 8. ) * restriction.transpose().conjugate();
             // Eigen::MatrixXcd interpolation = 8. * restriction.transpose().conjugate();
             // Eigen::MatrixXcd interpolation = restriction.transpose().conjugate();
             // WALBERLA_LOG_INFO_ON_ROOT("interpolation " << interpolation);
@@ -741,7 +741,7 @@ real_t estimateAsymptoticTwoGridRate( const Cell& cell, uint_t level, FormType f
             if ( std::abs( op_coarse ) < 1e-14 )
                continue;
 
-            if (ix == 0 && iy == 0 && iz == 0)
+            if ( ix == 0 && iy == 0 && iz == 0 )
                continue;
 
             Eigen::SelfAdjointEigenSolver< Eigen::MatrixXcd > eigensolver( S );
@@ -1042,7 +1042,9 @@ int main( int argc, char** argv )
 
       // calculate asymptotic stencil
       {
-         auto max_symbol = ldlt::p1::dim3::estimateAsymptoticSmootherRate( cell, maxLevel, form_const );
+         auto id = std::make_shared< IdentityMap >();
+         form_const.setGeometryMap( id );
+         auto max_symbol = ldlt::p1::dim3::estimateAsymptoticSmootherRate( cell.getCoordinates(), maxLevel, form_const );
          WALBERLA_LOG_INFO_ON_ROOT( "smoother symbol max " << max_symbol );
       }
 
