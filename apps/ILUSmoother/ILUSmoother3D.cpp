@@ -176,7 +176,9 @@ std::map< SD, real_t > calculateAsymptoticLDLTStencil( std::map< SD, real_t >& a
    l_stencil_next[SD::VERTEX_C] = 1.;
 
    // asymptotic iteration:
-   for ( uint_t i = 0; i < 100; i += 1 )
+   real_t last_diff = 0;
+   const uint_t maxIter = 10000;
+   for ( uint_t i = 0; i < maxIter; i += 1 )
    {
       const real_t a_bc  = a_stencil[SD::VERTEX_BC];
       const real_t a_s   = a_stencil[SD::VERTEX_S];
@@ -238,21 +240,24 @@ std::map< SD, real_t > calculateAsymptoticLDLTStencil( std::map< SD, real_t >& a
       l_stencil_next[SD::VERTEX_SE]  = beta_se;
       l_stencil_next[SD::VERTEX_C]   = beta_c;
 
-      real_t diff = 0;
+      last_diff = 0;
       for ( auto d : hyteg::ldlt::p1::dim3::lowerDirectionsAndCenter )
       {
-         diff += std::abs( l_stencil_prev[d] - l_stencil_next[d] );
+         last_diff += std::abs( l_stencil_prev[d] - l_stencil_next[d] );
       }
-      // WALBERLA_LOG_INFO_ON_ROOT( "difference in iteration " << i << " is " << diff );
+
+      //WALBERLA_LOG_INFO_ON_ROOT( "difference in iteration " << i << " is " << last_diff );
+      //for ( auto d : ldlt::p1::dim3::lowerDirectionsAndCenter )
+      //   WALBERLA_LOG_INFO(  stencilDirectionToStr[d] << " " << l_stencil_next[d] );
 
       l_stencil_prev = l_stencil_next;
 
-      if ( diff < 1e-15 )
+      if ( last_diff < 1e-15 )
       {
          return l_stencil_prev;
       }
    }
-   WALBERLA_ABORT( "could not find asymptotic stencil" );
+   WALBERLA_ABORT( "Could not find asymptotic stencil. Last difference was " << last_diff << " after " << maxIter << " iterations." );
 }
 
 std::complex< real_t >
@@ -311,6 +316,99 @@ std::array< real_t, 3 > getMicroEdgeWidths( const Cell& cell, uint_t level )
 }
 
 template < typename FormType >
+real_t estimateAsymptoticSmootherRateGS( const Cell& cell, uint_t level, FormType form )
+{
+   form.setGeometryMap( cell.getGeometryMap() );
+   auto a_stencil  = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { 2, 2, 2 }, cell, level, form );
+   auto ld_stencil = a_stencil;
+   auto u_stencil  = a_stencil;
+
+   for ( auto d : lowerDirections )
+      ld_stencil[opposite( d )] = 0;
+
+   for ( auto d : lowerDirectionsAndCenter )
+      u_stencil[d] = 0;
+
+   const auto h = ldlt::p1::dim3::getMicroEdgeWidths( cell, level );
+
+   // calculate symbols
+   /*
+      WALBERLA_LOG_INFO_ON_ROOT( "a stencil:" );
+      for ( auto d : ldlt::p1::dim3::allDirections )
+         WALBERLA_LOG_INFO( " " << stencilDirectionToStr[d] << " " << a_stencil[d] );
+      WALBERLA_LOG_INFO_ON_ROOT( "l stencil:" );
+      for ( auto d : ldlt::p1::dim3::allDirections )
+         WALBERLA_LOG_INFO( " " << stencilDirectionToStr[d] << " " << l_stencil[d] );
+      WALBERLA_LOG_INFO_ON_ROOT( "d stencil:" );
+      for ( auto d : ldlt::p1::dim3::allDirections )
+         WALBERLA_LOG_INFO( " " << stencilDirectionToStr[d] << " " << d_stencil[d] );
+      WALBERLA_LOG_INFO_ON_ROOT( "lt stencil:" );
+      for ( auto d : ldlt::p1::dim3::allDirections )
+         WALBERLA_LOG_INFO( " " << stencilDirectionToStr[d] << " " << lt_stencil[d] );
+      */
+
+   int    num_samples_half    = 4;
+   int    num_samples         = 2 * num_samples_half;
+   real_t max_symbol          = 0;
+   real_t mean_symbol         = 0;
+   int    total_sample_number = 0;
+   for ( int ix = -( num_samples - 1 ); ix < num_samples; ix += 1 )
+   {
+      for ( int iy = -( num_samples - 1 ); iy < num_samples; iy += 1 )
+      {
+         for ( int iz = -( num_samples - 1 ); iz < num_samples; iz += 1 )
+         {
+            real_t sx = ( real_c( ix ) / num_samples );
+            real_t sy = ( real_c( iy ) / num_samples );
+            real_t sz = ( real_c( iz ) / num_samples );
+
+            real_t                  thetax = pi * sx / h[0];
+            real_t                  thetay = pi * sy / h[1];
+            real_t                  thetaz = pi * sz / h[2];
+            std::array< real_t, 3 > theta  = { thetax, thetay, thetaz };
+
+            bool ix_smooth = ( -pi / 2. / h[0] <= thetax ) && ( thetax <= pi / 2. / h[0] );
+            bool iy_smooth = ( -pi / 2. / h[1] <= thetay ) && ( thetay <= pi / 2. / h[1] );
+            bool iz_smooth = ( -pi / 2. / h[2] <= thetaz ) && ( thetaz <= pi / 2. / h[2] );
+
+            if ( ix_smooth && iy_smooth && iz_smooth )
+               continue;
+
+            auto symbol_a  = ldlt::p1::dim3::calculateSymbol( a_stencil, theta, h );
+            auto symbol_ld = ldlt::p1::dim3::calculateSymbol( ld_stencil, theta, h );
+            auto symbol_u  = ldlt::p1::dim3::calculateSymbol( u_stencil, theta, h );
+
+            auto symbol = std::abs( ( symbol_ld - symbol_a ) / symbol_ld );
+
+            max_symbol = std::max( symbol, max_symbol );
+            mean_symbol += symbol;
+            total_sample_number += 1;
+
+            /*
+               WALBERLA_LOG_INFO_ON_ROOT( sx << " " << sy << " " << sz );
+               WALBERLA_LOG_INFO_ON_ROOT( ix << " " << iy << " " << iz << ", " << theta[0] * h[0] << " " << theta[1] * h[1] << " "
+                                             << theta[2] * h[2] << ", " << symbol << " " << max_symbol )
+               WALBERLA_LOG_INFO_ON_ROOT( "a stencil symbol " << symbol_a );
+               WALBERLA_LOG_INFO_ON_ROOT( "l stencil symbol " << symbol_l );
+               WALBERLA_LOG_INFO_ON_ROOT( "lt stencil symbol " << symbol_lt );
+               WALBERLA_LOG_INFO_ON_ROOT( "d stencil symbol " << symbol_d );
+               WALBERLA_LOG_INFO_ON_ROOT( "ldt stencil symbol " << symbol_ldlt );
+               WALBERLA_LOG_INFO_ON_ROOT( "symbol " << symbol );
+               WALBERLA_LOG_INFO_ON_ROOT( "----------" )
+               */
+         }
+      }
+   }
+
+   /*
+      WALBERLA_LOG_INFO_ON_ROOT( "symbol max " << max_symbol );
+      WALBERLA_LOG_INFO_ON_ROOT( "symbol mean " << mean_symbol / total_sample_number );
+      */
+
+   return max_symbol;
+}
+
+template < typename FormType >
 real_t estimateAsymptoticSmootherRate( const Cell& cell, uint_t level, FormType form )
 {
    form.setGeometryMap( cell.getGeometryMap() );
@@ -339,7 +437,7 @@ real_t estimateAsymptoticSmootherRate( const Cell& cell, uint_t level, FormType 
          WALBERLA_LOG_INFO( " " << stencilDirectionToStr[d] << " " << lt_stencil[d] );
       */
 
-   int    num_samples_half    = 4;
+   int    num_samples_half    = 16;
    int    num_samples         = 2 * num_samples_half;
    real_t max_symbol          = 0;
    real_t mean_symbol         = 0;
@@ -411,32 +509,34 @@ std::map< SD, real_t > prepare_restriction_stencil()
    return stencil;
 }
 
-std::array< real_t, 3 > getTheta(const std::array< real_t, 3 >& theta, const std::array< uint_t, 3 >& alpha, const std::array< real_t, 3 >& h)
+std::array< real_t, 3 >
+    getTheta( const std::array< real_t, 3 >& theta, const std::array< uint_t, 3 >& alpha, const std::array< real_t, 3 >& h )
 {
-   std::array< real_t, 3 > theta_alpha {0, 0, 0};
-   for (uint_t i = 0; i < 3; i+=1)
+   std::array< real_t, 3 > theta_alpha{ 0, 0, 0 };
+   for ( uint_t i = 0; i < 3; i += 1 )
    {
-      auto sgn = (theta[i] > 0) ? +1. : -1.;
+      auto sgn       = ( theta[i] > 0 ) ? +1. : -1.;
       theta_alpha[i] = theta[i] - real_c( alpha[i] ) * sgn * pi / h[i];
    }
    return theta_alpha;
 }
 
-Eigen::MatrixXcd getRestrictionTwoGridMatrix(const std::array< real_t, 3 > theta, const std::array< real_t, 3 >& h){
+Eigen::MatrixXcd getRestrictionTwoGridMatrix( const std::array< real_t, 3 > theta, const std::array< real_t, 3 >& h )
+{
    auto resStencil = prepare_restriction_stencil();
 
-   Eigen::MatrixXcd symRestriction(1, 8);
-   int dof = 0;
-   for (uint_t x = 0; x <= 1; x+=1)
+   Eigen::MatrixXcd symRestriction( 1, 8 );
+   int              dof = 0;
+   for ( uint_t x = 0; x <= 1; x += 1 )
    {
-      for (uint_t y = 0; y <= 1; y+=1)
+      for ( uint_t y = 0; y <= 1; y += 1 )
       {
-         for (uint_t z = 0; z <= 1; z+=1)
+         for ( uint_t z = 0; z <= 1; z += 1 )
          {
-            std::array< uint_t, 3> alpha {x, y, z};
-            auto thetaAlpha = getTheta(theta, alpha, h );
-            auto symbol = calculateSymbol(resStencil, thetaAlpha, h);
-            symRestriction(0, dof) = symbol;
+            std::array< uint_t, 3 > alpha{ x, y, z };
+            auto                    thetaAlpha = getTheta( theta, alpha, h );
+            auto                    symbol     = calculateSymbol( resStencil, thetaAlpha, h );
+            symRestriction( 0, dof )           = symbol;
             dof += 1;
          }
       }
@@ -445,19 +545,21 @@ Eigen::MatrixXcd getRestrictionTwoGridMatrix(const std::array< real_t, 3 > theta
    return symRestriction;
 }
 
-Eigen::MatrixXcd getOpTwoGridMatrix(std::map< SD, real_t > op_sencil, const std::array< real_t, 3 > theta, const std::array< real_t, 3 >& h){
-   Eigen::MatrixXcd matrix(8, 8);
+Eigen::MatrixXcd
+    getOpTwoGridMatrix( std::map< SD, real_t > op_sencil, const std::array< real_t, 3 > theta, const std::array< real_t, 3 >& h )
+{
+   Eigen::MatrixXcd matrix( 8, 8 );
    matrix.setZero();
    int dof = 0;
-   for (uint_t x = 0; x <= 1; x+=1)
+   for ( uint_t x = 0; x <= 1; x += 1 )
    {
-      for (uint_t y = 0; y <= 1; y+=1)
+      for ( uint_t y = 0; y <= 1; y += 1 )
       {
-         for (uint_t z = 0; z <= 1; z+=1)
+         for ( uint_t z = 0; z <= 1; z += 1 )
          {
-            std::array< uint_t, 3> alpha {x, y, z};
-            auto thetaAlpha = getTheta(theta, alpha, h );
-            matrix(dof, dof) = calculateSymbol(op_sencil, thetaAlpha, h);
+            std::array< uint_t, 3 > alpha{ x, y, z };
+            auto                    thetaAlpha = getTheta( theta, alpha, h );
+            matrix( dof, dof )                 = calculateSymbol( op_sencil, thetaAlpha, h );
 
             dof += 1;
          }
@@ -467,18 +569,19 @@ Eigen::MatrixXcd getOpTwoGridMatrix(std::map< SD, real_t > op_sencil, const std:
    return matrix;
 }
 
-bool isFeasible(std::map< SD, real_t > op_sencil, const std::array< real_t, 3 > theta, const std::array< real_t, 3 >& h){
-   for (uint_t x = 0; x <= 1; x+=1)
+bool isFeasible( std::map< SD, real_t > op_sencil, const std::array< real_t, 3 > theta, const std::array< real_t, 3 >& h )
+{
+   for ( uint_t x = 0; x <= 1; x += 1 )
    {
-      for (uint_t y = 0; y <= 1; y+=1)
+      for ( uint_t y = 0; y <= 1; y += 1 )
       {
-         for (uint_t z = 0; z <= 1; z+=1)
+         for ( uint_t z = 0; z <= 1; z += 1 )
          {
-            std::array< uint_t, 3> alpha {x, y, z};
-            auto thetaAlpha = getTheta(theta, alpha, h );
-            auto symbol = calculateSymbol(op_sencil, thetaAlpha, h);
+            std::array< uint_t, 3 > alpha{ x, y, z };
+            auto                    thetaAlpha = getTheta( theta, alpha, h );
+            auto                    symbol     = calculateSymbol( op_sencil, thetaAlpha, h );
 
-            if (std::abs(symbol) < 1e-14)
+            if ( std::abs( symbol ) < 1e-14 )
                return false;
          }
       }
@@ -487,25 +590,28 @@ bool isFeasible(std::map< SD, real_t > op_sencil, const std::array< real_t, 3 > 
    return true;
 }
 
-
-Eigen::MatrixXcd getSmootherTwoGridMatrix(std::map< SD, real_t > a_stencil, const std::array< real_t, 3 > theta, const std::array< real_t, 3 >& h, real_t nu){
+Eigen::MatrixXcd getSmootherTwoGridMatrix( std::map< SD, real_t >         a_stencil,
+                                           const std::array< real_t, 3 >  theta,
+                                           const std::array< real_t, 3 >& h,
+                                           real_t                         nu )
+{
    auto l_stencil_asymptotic = ldlt::p1::dim3::calculateAsymptoticLDLTStencil( a_stencil );
 
    auto l_stencil  = ldlt::p1::dim3::prepare_l_stencil( l_stencil_asymptotic );
    auto lt_stencil = ldlt::p1::dim3::prepare_lt_stencil( l_stencil_asymptotic );
    auto d_stencil  = ldlt::p1::dim3::prepare_d_stencil( l_stencil_asymptotic );
 
-   Eigen::MatrixXcd matrix(8, 8);
+   Eigen::MatrixXcd matrix( 8, 8 );
    matrix.setZero();
    int dof = 0;
-   for (uint_t x = 0; x <= 1; x+=1)
+   for ( uint_t x = 0; x <= 1; x += 1 )
    {
-      for (uint_t y = 0; y <= 1; y+=1)
+      for ( uint_t y = 0; y <= 1; y += 1 )
       {
-         for (uint_t z = 0; z <= 1; z+=1)
+         for ( uint_t z = 0; z <= 1; z += 1 )
          {
-            std::array< uint_t, 3> alpha {x, y, z};
-            auto thetaAlpha = getTheta(theta, alpha, h );
+            std::array< uint_t, 3 > alpha{ x, y, z };
+            auto                    thetaAlpha = getTheta( theta, alpha, h );
 
             auto symbol_a    = ldlt::p1::dim3::calculateSymbol( a_stencil, thetaAlpha, h );
             auto symbol_l    = ldlt::p1::dim3::calculateSymbol( l_stencil, thetaAlpha, h );
@@ -515,7 +621,7 @@ Eigen::MatrixXcd getSmootherTwoGridMatrix(std::map< SD, real_t > a_stencil, cons
 
             auto symbol = ( symbol_ldlt - symbol_a ) / symbol_ldlt;
 
-            matrix(dof, dof) = std::pow(symbol, nu);
+            matrix( dof, dof ) = std::pow( symbol, nu );
 
             dof += 1;
          }
@@ -525,22 +631,58 @@ Eigen::MatrixXcd getSmootherTwoGridMatrix(std::map< SD, real_t > a_stencil, cons
    return matrix;
 }
 
-template <typename FormType>
-real_t estimateAsymptoticTwoGridRate(const Cell& cell, uint_t level, FormType form)
+Eigen::MatrixXcd getSmootherTwoGridMatrixGS( std::map< SD, real_t >         a_stencil,
+                                             const std::array< real_t, 3 >  theta,
+                                             const std::array< real_t, 3 >& h,
+                                             real_t                         nu )
 {
-   auto a_stencil_fine = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { 1, 1, 1 }, cell, level, form );
-   auto a_stencil_coarse = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { 1, 1, 1 }, cell, level-1, form );
+   auto ld_stencil = a_stencil;
+   for ( auto d : lowerDirections )
+      ld_stencil[opposite( d )] = 0;
 
-   auto asymptotic_ldlt_stencil = calculateAsymptoticLDLTStencil( a_stencil_fine ) ;
-   auto l_stencil  = ldlt::p1::dim3::prepare_l_stencil( asymptotic_ldlt_stencil );
-   auto lt_stencil = ldlt::p1::dim3::prepare_lt_stencil( asymptotic_ldlt_stencil );
-   auto d_stencil  = ldlt::p1::dim3::prepare_d_stencil( asymptotic_ldlt_stencil );
+   Eigen::MatrixXcd matrix( 8, 8 );
+   matrix.setZero();
+   int dof = 0;
+   for ( uint_t x = 0; x <= 1; x += 1 )
+   {
+      for ( uint_t y = 0; y <= 1; y += 1 )
+      {
+         for ( uint_t z = 0; z <= 1; z += 1 )
+         {
+            std::array< uint_t, 3 > alpha{ x, y, z };
+            auto                    thetaAlpha = getTheta( theta, alpha, h );
+
+            auto symbol_a  = ldlt::p1::dim3::calculateSymbol( a_stencil, thetaAlpha, h );
+            auto symbol_ld = ldlt::p1::dim3::calculateSymbol( ld_stencil, thetaAlpha, h );
+
+            auto symbol = ( symbol_ld - symbol_a ) / symbol_ld;
+
+            matrix( dof, dof ) = std::pow( symbol, nu );
+
+            dof += 1;
+         }
+      }
+   }
+
+   return matrix;
+}
+
+template < typename FormType >
+real_t estimateAsymptoticTwoGridRate( const Cell& cell, uint_t level, FormType form, bool useGS )
+{
+   auto a_stencil_fine   = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { 1, 1, 1 }, cell, level, form );
+   auto a_stencil_coarse = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { 1, 1, 1 }, cell, level - 1, form );
+
+   auto asymptotic_ldlt_stencil = calculateAsymptoticLDLTStencil( a_stencil_fine );
+   auto l_stencil               = ldlt::p1::dim3::prepare_l_stencil( asymptotic_ldlt_stencil );
+   auto lt_stencil              = ldlt::p1::dim3::prepare_lt_stencil( asymptotic_ldlt_stencil );
+   auto d_stencil               = ldlt::p1::dim3::prepare_d_stencil( asymptotic_ldlt_stencil );
 
    // TODO
-   auto h = getMicroEdgeWidths(cell, level);
-   auto h_coarse = getMicroEdgeWidths(cell, level-1);
+   auto h        = getMicroEdgeWidths( cell, level );
+   auto h_coarse = getMicroEdgeWidths( cell, level - 1 );
 
-   int    num_samples_half    = 4;
+   int    num_samples_half    = 16;
    int    num_samples         = 2 * num_samples_half;
    real_t max_symbol          = 0;
    real_t mean_symbol         = 0;
@@ -563,37 +705,50 @@ real_t estimateAsymptoticTwoGridRate(const Cell& cell, uint_t level, FormType fo
             real_t                  thetaz = pi * sz / h[2] / 2.;
             std::array< real_t, 3 > theta  = { thetax, thetay, thetaz };
 
-            std::array< real_t, 3 > theta_coarse  = { 2*thetax, 2*thetay, 2*thetaz };
+            std::array< real_t, 3 > theta_coarse = { 2 * thetax, 2 * thetay, 2 * thetaz };
 
-            if (!isFeasible(a_stencil_fine, theta, h))
+            if ( !isFeasible( a_stencil_fine, theta, h ) )
                continue;
 
-            Eigen::MatrixXcd        restriction   = getRestrictionTwoGridMatrix( theta, h );
+            Eigen::MatrixXcd restriction = getRestrictionTwoGridMatrix( theta, h );
             // WALBERLA_LOG_INFO_ON_ROOT("restriction " << restriction);
-            Eigen::MatrixXcd        interpolation = restriction.transpose();
+            Eigen::MatrixXcd interpolation = (1/8.) * restriction.transpose().conjugate();
+            // Eigen::MatrixXcd interpolation = 8. * restriction.transpose().conjugate();
+            // Eigen::MatrixXcd interpolation = restriction.transpose().conjugate();
             // WALBERLA_LOG_INFO_ON_ROOT("interpolation " << interpolation);
-            std::complex< real_t >  op_coarse     = calculateSymbol( a_stencil_coarse, theta_coarse, h_coarse );
+            std::complex< real_t > op_coarse = calculateSymbol( a_stencil_coarse, theta_coarse, h_coarse );
             // WALBERLA_LOG_INFO_ON_ROOT("coarse " << op_coarse);
-            Eigen::MatrixXcd        op_fine       = getOpTwoGridMatrix( a_stencil_fine, theta, h );
+            Eigen::MatrixXcd op_fine = getOpTwoGridMatrix( a_stencil_fine, theta, h );
             // WALBERLA_LOG_INFO_ON_ROOT("coarse " << op_fine);
-            Eigen::MatrixXcd        smoother      = getSmootherTwoGridMatrix( a_stencil_fine, theta, h, 3 );
+            Eigen::MatrixXcd smoother;
+            if ( useGS )
+            {
+               smoother = getSmootherTwoGridMatrixGS( a_stencil_fine, theta, h, 3 );
+            }
+            else
+            {
+               smoother = getSmootherTwoGridMatrix( a_stencil_fine, theta, h, 3 );
+            }
             // WALBERLA_LOG_INFO_ON_ROOT("smoother " << smoother);
-            Eigen::MatrixXcd        id( 8, 8 );
+            Eigen::MatrixXcd id( 8, 8 );
             id.setIdentity();
             // WALBERLA_LOG_INFO_ON_ROOT("id " << id);
             Eigen::MatrixXcd C = ( id - ( 1. / op_coarse ) * interpolation * restriction * op_fine );
             Eigen::MatrixXcd S = smoother * C * smoother;
+            // Eigen::MatrixXcd S = smoother * C * smoother * smoother * C * smoother;
             // WALBERLA_LOG_INFO_ON_ROOT( ( 1. / op_coarse ) );
 
-            if (std::abs(op_coarse) < 1e-14)
+            if ( std::abs( op_coarse ) < 1e-14 )
                continue;
 
-            // real_t symbol = S.operatorNorm();
+            if (ix == 0 && iy == 0 && iz == 0)
+               continue;
 
             Eigen::SelfAdjointEigenSolver< Eigen::MatrixXcd > eigensolver( S );
             if ( eigensolver.info() != Eigen::Success )
-               WALBERLA_ABORT("eigensolver failed");
+               WALBERLA_ABORT( "eigensolver failed" );
             real_t symbol = eigensolver.eigenvalues().cwiseAbs().maxCoeff();
+            // real_t symbol = S.operatorNorm();
 
             // WALBERLA_LOG_INFO_ON_ROOT(sx << " " << sy << " " << sz << " " << symbol);
 
@@ -616,23 +771,18 @@ real_t estimateAsymptoticTwoGridRate(const Cell& cell, uint_t level, FormType fo
             }
             */
 
-            if (ix == 0 && iy == 0 && iz == 0)
+            if ( ix == 0 && iy == 0 && iz == 0 )
             {
-               Eigen::SelfAdjointEigenSolver< Eigen::MatrixXcd > eigensolver( S );
-               // if ( eigensolver.info() != Eigen::Success )
-               // WALBERLA_ABORT( "could not get eigenvalues" );
-               // WALBERLA_LOG_INFO_ON_ROOT( "The eigenvalues of A are:\n" << eigensolver.eigenvalues() );
                continue;
             }
 
-            max_symbol = std::max(max_symbol, symbol);
+            max_symbol = std::max( max_symbol, symbol );
          }
       }
    }
 
    return max_symbol;
 }
-
 
 } // namespace dim3
 } // namespace p1
@@ -897,10 +1047,26 @@ int main( int argc, char** argv )
       }
 
       // calculate two grid stencil
+      /*
       {
-         auto max_symbol = ldlt::p1::dim3::estimateAsymptoticTwoGridRate( cell, maxLevel, form_const );
+         auto max_symbol = ldlt::p1::dim3::estimateAsymptoticTwoGridRate( cell, maxLevel, form_const, false );
          WALBERLA_LOG_INFO_ON_ROOT( "two-grid symbol max " << max_symbol );
       }
+      */
+
+      // calculate asymptotic stencil
+      {
+         auto max_symbol = ldlt::p1::dim3::estimateAsymptoticSmootherRateGS( cell, maxLevel, form_const );
+         WALBERLA_LOG_INFO_ON_ROOT( "smoother GS symbol max " << max_symbol );
+      }
+
+      // calculate two grid stencil
+      /*
+      {
+         auto max_symbol = ldlt::p1::dim3::estimateAsymptoticTwoGridRate( cell, maxLevel, form_const, true );
+         WALBERLA_LOG_INFO_ON_ROOT( "two-grid GS symbol max " << max_symbol );
+      }
+      */
    }
 
    const uint_t opDegreeX     = parameters.getParameter< uint_t >( "op_surrogate_degree_x" );
