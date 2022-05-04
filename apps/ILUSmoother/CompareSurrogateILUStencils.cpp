@@ -26,10 +26,10 @@
 #include "core/mpi/MPIManager.h"
 
 #include "hyteg/dataexport/VTKOutput.hpp"
+#include "hyteg/elementwiseoperators/P1ElementwiseOperator.hpp"
 #include "hyteg/p1functionspace/P1Function.hpp"
 #include "hyteg/p1functionspace/P1VariableOperator.hpp"
 #include "hyteg/primitivestorage/PrimitiveStorage.hpp"
-#include "hyteg/elementwiseoperators/P1ElementwiseOperator.hpp"
 
 #include "block_smoother/P1LDLTInplaceCellSmoother.hpp"
 #include "utils/create_domain.hpp"
@@ -53,7 +53,9 @@ int main( int argc, char** argv )
 
    const uint_t level = parameters.getParameter< uint_t >( "level" );
 
-   const uint_t degree    = parameters.getParameter< uint_t >( "degree" );
+   const uint_t degreeX   = parameters.getParameter< uint_t >( "degreeX" );
+   const uint_t degreeY   = parameters.getParameter< uint_t >( "degreeY" );
+   const uint_t degreeZ   = parameters.getParameter< uint_t >( "degreeZ" );
    const uint_t skipLevel = parameters.getParameter< uint_t >( "skip_level" );
 
    const std::string filename = parameters.getParameter< std::string >( "filename" );
@@ -65,10 +67,11 @@ int main( int argc, char** argv )
 
    using OperatorType = hyteg::P1ElementwiseBlendingDivKGradOperator;
    using FormType     = hyteg::forms::p1_div_k_grad_blending_q3;
-   FormType     form ([](auto& ){ return 1.; }, [](auto& ){ return 1.; });
+   FormType     form( []( auto& ) { return 1.; }, []( auto& ) { return 1.; } );
    OperatorType laplaceOperator( storage, level, level, form );
 
-   const std::array< uint_t, 3 >                                      degrees = { degree, degree, degree };
+   const std::array< uint_t, 3 > degrees = { degreeX, degreeY, degreeZ };
+
    hyteg::P1LDLTSurrogateCellSmoother< OperatorType, FormType, true > surrogateSmoother(
        storage, level, level, degrees, degrees, true, form );
    hyteg::P1LDLTInplaceCellSmoother< OperatorType, FormType > inplaceSmoother( storage, level, level, form );
@@ -89,11 +92,17 @@ int main( int argc, char** argv )
       inplaceSmoother.interpolate_stencil_direction( level, d, u_inpl.back() );
       u_error.back().assign( { +1, -1 }, { u_inpl.back(), u_surr.back() }, level );
 
-      real_t error_value = std::sqrt( u_error.back().dotGlobal( u_error.back(), level, hyteg::All ) );
+      real_t error_value_squared = u_error.back().dotGlobal( u_error.back(), level, hyteg::All );
+      real_t error_value         = std::sqrt( error_value_squared );
+      real_t error_per_dof       = error_value / hyteg::real_c( hyteg::numberOfGlobalDoFs( u_surr.back(), level ) );
+      real_t discrete_L2 = std::sqrt( error_value_squared / hyteg::real_c( hyteg::numberOfGlobalDoFs( u_surr.back(), level ) ) );
 
       u_error.back().getMaxMagnitude( level, hyteg::All );
 
-      WALBERLA_LOG_INFO_ON_ROOT( "l2 error " + hyteg::stencilDirectionToStr[d] << " " << std::scientific << error_value );
+      WALBERLA_LOG_INFO_ON_ROOT( "l2 error global " + hyteg::stencilDirectionToStr[d] << " " << std::scientific << error_value );
+      WALBERLA_LOG_INFO_ON_ROOT( "l2 error per dof " + hyteg::stencilDirectionToStr[d] << " " << std::scientific
+                                                                                       << error_per_dof );
+      WALBERLA_LOG_INFO_ON_ROOT( "L2 error global " + hyteg::stencilDirectionToStr[d] << " " << std::scientific << discrete_L2 );
    }
 
    /*
@@ -134,5 +143,10 @@ int main( int argc, char** argv )
          vtkOutput.add( u_error[i] );
       }
       vtkOutput.write( level, 0 );
+   }
+
+   if ( writeVtk )
+   {
+      hyteg::writeDomainPartitioningVTK( storage, "./output", filename + "_domain" );
    }
 }
