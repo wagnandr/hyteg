@@ -241,6 +241,18 @@ void StoragePermutator::permutate_ilu( SetupPrimitiveStorage& storage )
    }
 }
 
+void StoragePermutator::permutate( SetupPrimitiveStorage& setup, const std::function< std::array< uint_t, 4 > (const Cell&)> & permutator )
+{
+   for ( const auto& cit : setup.getCells() )
+   {
+      Cell& cell = *cit.second;
+
+      auto permutation = permutator(cell);
+
+      permutate(setup, cell, permutation);
+   }
+}
+
 void StoragePermutator::permutate( SetupPrimitiveStorage& setup, Cell& cell, std::array< uint_t, 4 > permutation )
 {
    PrimitiveID vertexID0 = cell.neighborVertices_[permutation[0]];

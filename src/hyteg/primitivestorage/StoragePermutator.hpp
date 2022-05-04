@@ -45,6 +45,7 @@ class StoragePermutator
  public:
    void permutate_randomly( SetupPrimitiveStorage& setup, uint_t seed );
    void permutate_ilu( SetupPrimitiveStorage& setup );
+   void permutate( SetupPrimitiveStorage& setup, const std::function< std::array< uint_t, 4 > (const Cell&)> & permutator );
 
  private:
    void permutate( SetupPrimitiveStorage& setup, Cell& cell, std::array< uint_t, 4 > permutation );
