@@ -2158,11 +2158,13 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
             {
                for ( uint_t x = 0; x <= N_edge - 1 - z - y; x += 1 )
                {
-                  real_t polynomialValue = polynomial.eval( ldlt::p1::dim3::to_point( x, y, z, h ) );
-                  u_data[cidx( level, x, y, z, SD::VERTEX_C )] =
-                      ldlt::p1::dim3::apply_boundary_corrections_to_scalar( x, y, z, N_edge, direction, polynomialValue );
+                  real_t polyValue = polynomial.eval( ldlt::p1::dim3::to_point( x, y, z, h ) );
+                  polyValue = ldlt::p1::dim3::apply_boundary_corrections_to_scalar( x, y, z, N_edge, direction, polyValue );
                   if ( !useBoundaryCorrection && ldlt::p1::dim3::on_cell_boundary( x, y, z, 2, N_edge ) )
-                     u_data[cidx( level, x, y, z, SD::VERTEX_C )] = boundaryData.get( x, y, z )[direction];
+                     polyValue = boundaryData.get( x, y, z )[direction];
+                  if ( direction == SD::VERTEX_C )
+                     polyValue = 1. / polyValue;
+                  u_data[cidx( level, x, y, z, SD::VERTEX_C )] = polyValue;
                }
             }
          }
