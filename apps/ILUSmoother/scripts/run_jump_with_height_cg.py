@@ -19,7 +19,7 @@ def run_height_cg(smoother, kappa_lower, kappa_upper, height):
         f'-Parameters.kappa_lower={kappa_lower}',
         f'-Parameters.kappa_upper={kappa_upper}',
         f'-Parameters.tetrahedron_height={height}',
-    ], 4)
+    ], 2)
     print(output)
     return ResultsMGJump(
         maxLevel=extract_number('maxLevel', output),
@@ -34,7 +34,7 @@ def run_height_cg(smoother, kappa_lower, kappa_upper, height):
 gs = 'cell_gs'
 ilu_basic = 'inplace_ldlt'
 
-smoother_types = [gs, ilu_basic]
+smoother_types = [ilu_basic, gs]
 
 
 if __name__ == '__main__':
@@ -42,8 +42,8 @@ if __name__ == '__main__':
     kappa_lower = 1.
     kappa_uppers = [1e-5, 1e0, 1e5]
     heights = [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.025, 0.0125]
-    for smoother in smoother_types:
-        for kappa_upper in kappa_uppers:
+    for kappa_upper in kappa_uppers:
+        for smoother in smoother_types:
             for height in heights:
                 output.append(run_height_cg(smoother, kappa_lower, kappa_upper, height))
                 print(to_json(output))

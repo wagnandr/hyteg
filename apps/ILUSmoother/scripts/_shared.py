@@ -6,12 +6,14 @@ import dataclasses
 
 main_file = '../ILUSmoother3D'
 
-def run(config_file, parameters=[], np=1):
+
+def run(config_file, parameters=[], np=1, main_file_=main_file):
     os.makedirs('./output', exist_ok=True)
-    params = ['mpirun', '-np', f'{np}', main_file, config_file] + parameters
+    params = ['mpirun', '-np', f'{np}', main_file_, config_file] + parameters
     output = subprocess.check_output(params)
     output = output.decode('utf-8')
     return output
+
 
 def extract_number(key, output):
     regex = key + r": (.*)$"
@@ -25,6 +27,11 @@ def extract_number(key, output):
         return float(match.group(1))
 
     regex = f" Key = '{key}' , Value = " + r"'(.*)'$"
+    match = re.search(regex, output, re.MULTILINE)
+    if match is not None:
+        return float(match.group(1))
+
+    regex = f" {key}" + r"(.*)$"
     match = re.search(regex, output, re.MULTILINE)
     if match is not None:
         return float(match.group(1))

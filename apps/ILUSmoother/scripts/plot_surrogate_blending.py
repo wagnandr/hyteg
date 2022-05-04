@@ -28,7 +28,7 @@ ax.semilogy(surr_ilu_degrees_corr, surr_ilu_rates_corr, '-o', label=r'surrogate 
 ax.set_xlabel(r'$dg_x = dg_y = dg_z$')
 ax.set_ylabel(r'$\rho$')
 #ax.set_ylim([8e-3, 3e-1])
-ax.set_ylim([1e-1, 1])
+ax.set_ylim([4e-4, 1])
 ax.set_xticks([i for i in range(len(surr_ilu_rates_boundary))])
 ax.grid(True)
 

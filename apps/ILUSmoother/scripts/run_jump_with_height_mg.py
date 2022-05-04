@@ -34,7 +34,7 @@ def run_height_mg(smoother, kappa_lower, kappa_upper, height):
 gs = 'cell_gs'
 ilu_basic = 'inplace_ldlt'
 
-smoother_types = [gs, ilu_basic]
+smoother_types = [ilu_basic, gs]
 
 
 if __name__ == '__main__':

@@ -22,7 +22,7 @@ Parameters
 
   // for domain tetrahedron;:
   tetrahedron_permutation 0;
-  tetrahedron_height 1;
+  tetrahedron_height 0.1;
 
   // domain squished_cube;
   // domain tetrahedron;
