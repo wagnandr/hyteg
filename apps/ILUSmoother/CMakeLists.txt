@@ -18,6 +18,14 @@ waLBerla_add_executable( NAME CompareSurrogateILUStencils
         FILES CompareSurrogateILUStencils.cpp
         DEPENDS hyteg core)
 
+waLBerla_add_executable( NAME ILUSmootherProf
+        FILES ILUSmootherProf.cpp
+        DEPENDS hyteg core)
+
+waLBerla_add_executable( NAME ILUSketchbook
+        FILES ILUSketchbook.cpp
+        DEPENDS hyteg core)
+
 waLBerla_link_files_to_builddir( *.prm )
 waLBerla_link_files_to_builddir( *.py )
 waLBerla_link_files_to_builddir( *.m )

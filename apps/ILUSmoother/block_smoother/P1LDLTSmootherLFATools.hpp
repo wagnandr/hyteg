@@ -20,6 +20,7 @@
 #pragma once
 
 #include "core/DataTypes.h"
+
 #include "hyteg/StencilDirections.hpp"
 
 #include "P1LDLTInplaceCellSmoother.hpp"
@@ -138,7 +139,7 @@ std::map< SD, real_t > calculateAsymptoticLDLTStencil( std::map< SD, real_t >& a
 }
 
 std::complex< real_t >
-calculateSymbol( std::map< SD, real_t >& stencil, const std::array< real_t, 3 >& theta, const std::array< real_t, 3 >& h )
+    calculateSymbol( std::map< SD, real_t >& stencil, const std::array< real_t, 3 >& theta, const std::array< real_t, 3 >& h )
 {
    using namespace std::complex_literals;
    std::complex< real_t > z_a = 0;
@@ -388,7 +389,7 @@ std::map< SD, real_t > prepare_restriction_stencil()
 }
 
 std::array< real_t, 3 >
-getTheta( const std::array< real_t, 3 >& theta, const std::array< uint_t, 3 >& alpha, const std::array< real_t, 3 >& h )
+    getTheta( const std::array< real_t, 3 >& theta, const std::array< uint_t, 3 >& alpha, const std::array< real_t, 3 >& h )
 {
    using walberla::math::pi;
    std::array< real_t, 3 > theta_alpha{ 0, 0, 0 };
@@ -425,7 +426,7 @@ Eigen::MatrixXcd getRestrictionTwoGridMatrix( const std::array< real_t, 3 > thet
 }
 
 Eigen::MatrixXcd
-getOpTwoGridMatrix( std::map< SD, real_t > op_sencil, const std::array< real_t, 3 > theta, const std::array< real_t, 3 >& h )
+    getOpTwoGridMatrix( std::map< SD, real_t > op_sencil, const std::array< real_t, 3 > theta, const std::array< real_t, 3 >& h )
 {
    Eigen::MatrixXcd matrix( 8, 8 );
    matrix.setZero();
@@ -664,16 +665,216 @@ real_t estimateAsymptoticTwoGridRate( const Cell& cell, uint_t level, FormType f
    return max_symbol;
 }
 
+std::vector< uint_t > getVertexIds( uint_t normalVertexId )
+{
+   std::vector< uint_t > localVertexIds;
+   for ( uint_t j = 0; j < 4; j += 1 )
+      if ( j != normalVertexId )
+         localVertexIds.push_back( j );
+   return localVertexIds;
+}
+
+real_t getHeight( const Cell& cell, uint_t id )
+{
+   std::vector< uint_t > triangleVertexIds = getVertexIds( id );
+
+   auto direction1 = cell.getCoordinates()[triangleVertexIds[1]] - cell.getCoordinates()[triangleVertexIds[0]];
+   auto direction2 = cell.getCoordinates()[triangleVertexIds[2]] - cell.getCoordinates()[triangleVertexIds[0]];
+
+   auto normal = crossProduct( direction1, direction2 );
+   normal /= normal.norm();
+
+   auto direction3 = cell.getCoordinates()[id] - cell.getCoordinates()[triangleVertexIds[0]];
+
+   return std::abs( direction3.dot( normal ) );
+}
+
+uint_t getMinHeightBaseTriangle( const Cell& cell )
+{
+   real_t minHeight      = getHeight( cell, 0 );
+   uint_t minHeightIndex = 0;
+   for ( uint_t i = 0; i < 4; i += 1 )
+   {
+      auto height = getHeight( cell, i );
+
+      if ( height <= minHeight )
+      {
+         minHeight      = height;
+         minHeightIndex = i;
+      }
+   }
+
+   return minHeightIndex;
+}
+
+std::array< real_t, 3 > get_triangle_angles( const Cell& cell, const std::vector< uint_t >& vertexIds )
+{
+   auto d01 = cell.getCoordinates()[vertexIds[1]] - cell.getCoordinates()[vertexIds[0]];
+   d01 /= d01.norm();
+   auto d02 = cell.getCoordinates()[vertexIds[2]] - cell.getCoordinates()[vertexIds[0]];
+   d02 /= d02.norm();
+   auto d21 = cell.getCoordinates()[vertexIds[1]] - cell.getCoordinates()[vertexIds[2]];
+   d21 /= d21.norm();
+
+   const std::array< real_t, 3 > angles = {
+       std::acos( d01.dot( d02 ) ), // vertex 0
+       std::acos( d01.dot( d21 ) ), // vertex 1
+       std::acos( -d21.dot( d02 ) ) // vertex 2
+   };
+
+   return angles;
+}
+
+std::array< real_t, 3 > get_distances( const Cell& cell, const std::vector< uint_t >& vertexIds, uint_t opposite )
+{
+   return {
+       (cell.getCoordinates()[vertexIds[0]] - cell.getCoordinates()[opposite]).norm(),
+       (cell.getCoordinates()[vertexIds[1]] - cell.getCoordinates()[opposite]).norm(),
+       (cell.getCoordinates()[vertexIds[2]] - cell.getCoordinates()[opposite]).norm(),
+   };
+}
+
+real_t get_triangle_area( const Cell& cell, const std::vector< uint_t >& vertexIds )
+{
+   auto direction1 = cell.getCoordinates()[vertexIds[1]] - cell.getCoordinates()[vertexIds[0]];
+   auto direction2 = cell.getCoordinates()[vertexIds[2]] - cell.getCoordinates()[vertexIds[0]];
+
+   const real_t area = 0.5 * crossProduct( direction1, direction2 ).norm();
+
+   return area;
+}
+
+uint_t getMaxAreaTriangle( const Cell& cell )
+{
+   real_t maxArea      = 0;
+   uint_t maxAreaIndex = 0;
+   for ( uint_t i = 0; i < 4; i += 1 )
+   {
+      std::vector< uint_t > localVertexIds = getVertexIds( i );
+      const real_t          area           = get_triangle_area( cell, localVertexIds );
+
+      if ( area >= maxArea )
+      {
+         maxArea      = area;
+         maxAreaIndex = i;
+      }
+   }
+
+   return maxAreaIndex;
+}
+
+std::array< uint_t, 4 > permutation_ilu_heuristic_3d( const Cell& cell )
+{
+   // find largest area facet
+   // auto maxAreaIndex = getMaxAreaTriangle( cell );
+   //auto maxAreaIndex = getMaxAngleTriangle(cell);
+   // auto maxAreaIndex      = getMinAngleTriangle( cell );
+   auto maxAreaIndex      = getMinHeightBaseTriangle( cell );
+   // auto maxAreaIndex      = getMaxHeightBaseTriangle( cell );
+   auto maxLocalVertexIds = getVertexIds( maxAreaIndex );
+
+   // permutate facet such that largest to smallest angle
+   // const auto angles = get_triangle_angles( cell, maxLocalVertexIds );
+   const auto angles = get_distances( cell, maxLocalVertexIds, maxAreaIndex );
+
+   auto maxElementIdx = static_cast< uint_t >( std::max_element( angles.begin(), angles.end() ) - angles.begin() );
+   auto minElementIdx = static_cast< uint_t >( std::min_element( angles.begin(), angles.end() ) - angles.begin() );
+
+   if ( minElementIdx == maxElementIdx )
+      minElementIdx = ( maxElementIdx + 1 ) % 3;
+
+   uint_t otherElementIdx = 0;
+   for ( uint_t i = 0; i < 3; i += 1 )
+   {
+      if ( minElementIdx == i )
+         continue;
+      else if ( maxElementIdx == i )
+         continue;
+      else
+      {
+         otherElementIdx = i;
+         break;
+      }
+   }
+
+   /*
+   std::array< uint_t, 4 > permutation = {
+       maxLocalVertexIds[maxElementIdx], maxLocalVertexIds[minElementIdx], maxLocalVertexIds[otherElementIdx], maxAreaIndex };
+   */
+
+   /*
+   std::array< uint_t, 4 > permutation = {
+       maxLocalVertexIds[minElementIdx], maxLocalVertexIds[otherElementIdx], maxLocalVertexIds[maxElementIdx], maxAreaIndex };
+   */
+
+   std::array< uint_t, 4 > permutation = {
+       maxLocalVertexIds[minElementIdx], maxLocalVertexIds[otherElementIdx], maxLocalVertexIds[maxElementIdx], maxAreaIndex };
+
+   return permutation;
+}
+
+template < typename VectorType >
+std::array< Point3D, 4 > get_permutated_coordinates( const Cell& cell, const VectorType& permutation )
+{
+   std::array< Point3D, 4 > permutatedCoordinates = {
+       cell.getCoordinates()[permutation[0]],
+       cell.getCoordinates()[permutation[1]],
+       cell.getCoordinates()[permutation[2]],
+       cell.getCoordinates()[permutation[3]],
+   };
+   return permutatedCoordinates;
+}
+
+template < typename FormType >
+class ILUPermutatorHeuristic
+{
+ public:
+   ILUPermutatorHeuristic( uint_t level, FormType& )
+       : level_( level )
+   {}
+
+   std::array< uint_t, 4 > operator()( const Cell& cell )
+   {
+      return permutation_ilu_heuristic_3d( cell );
+   }
+
+ private:
+   uint_t   level_;
+};
+
 template < typename FormType >
 class ILUPermutator
 {
  public:
    ILUPermutator( uint_t level, FormType& form )
-       : level_( level )
-       , form_( form )
+   : level_( level )
+   , form_( form )
    {}
 
    std::array< uint_t, 4 > operator()( const Cell& cell )
+   {
+      auto p1 = permutation( cell );
+      auto p2 = permutation_ilu_heuristic_3d( cell );
+
+      auto c1 = get_permutated_coordinates( cell, p1 );
+      auto c2 = get_permutated_coordinates( cell, p2 );
+
+      auto s1 = ldlt::p1::dim3::estimateAsymptoticSmootherRate( c1, level_, form_ );
+      auto s2 = ldlt::p1::dim3::estimateAsymptoticSmootherRate( c2, level_, form_ );
+
+      auto& c = cell.getCoordinates();
+
+      WALBERLA_LOG_INFO_ON_ROOT( "vertices: " << c[0] << " " << c[1] << " " << c[2] << " " << c[3] );
+
+      WALBERLA_LOG_INFO_ON_ROOT( "permutation (ilu): " << p1[0] << " " << p1[1] << " " << p1[2] << " " << p1[3] << " (" << s1
+                                                       << ")" );
+      WALBERLA_LOG_INFO_ON_ROOT( "permutation (heu): " << p2[0] << " " << p2[1] << " " << p2[2] << " " << p2[3] << " (" << s2
+                                                       << ")" );
+
+      return p1;
+   }
+
+   std::array< uint_t, 4 > permutation( const Cell& cell )
    {
       auto id = std::make_shared< IdentityMap >();
       form_.setGeometryMap( id );
@@ -683,15 +884,10 @@ class ILUPermutator
 
       for ( uint_t permutationId = 0; permutationId < 24; permutationId += 1 )
       {
-         auto                     permutation           = createPermutation( permutationId );
-         std::array< Point3D, 4 > permutatedCoordinates = {
-             cell.getCoordinates()[permutation[0]],
-             cell.getCoordinates()[permutation[1]],
-             cell.getCoordinates()[permutation[2]],
-             cell.getCoordinates()[permutation[3]],
-         };
+         auto permutation           = createPermutation( permutationId );
+         auto permutatedCoordinates = get_permutated_coordinates( cell, permutation );
 
-         auto symbol = ldlt::p1::dim3::estimateAsymptoticSmootherRate( cell.getCoordinates(), level_, form_ );
+         auto symbol = ldlt::p1::dim3::estimateAsymptoticSmootherRate( permutatedCoordinates, level_, form_ );
 
          if ( symbol < minSymbol )
          {
@@ -701,11 +897,11 @@ class ILUPermutator
       }
 
       return std::array< uint_t, 4 >( {
-                                          bestPermutation[0],
-                                          bestPermutation[1],
-                                          bestPermutation[2],
-                                          bestPermutation[3],
-                                      } );
+          bestPermutation[0],
+          bestPermutation[1],
+          bestPermutation[2],
+          bestPermutation[3],
+      } );
    }
 
  private:
@@ -717,4 +913,3 @@ class ILUPermutator
 } // namespace p1
 } // namespace ldlt
 } // namespace hyteg
-

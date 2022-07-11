@@ -575,6 +575,21 @@ class LDLTPolynomials
 
    [[nodiscard]] inline std::array< uint_t, 3 > getDegrees() const { return basis_.getDegrees(); }
 
+   void print(){
+      for (auto it : polynomials_)
+      {
+         std::stringstream buf;
+         buf << stencilDirectionToStr[it.first];
+         buf << " = [";
+         for (uint_t i = 0; i < it.second.getNumCoefficients(); i += 1){
+            buf << it.second.getCoefficient(i) << ",";
+         }
+         buf << "]";
+
+         WALBERLA_LOG_INFO_ON_ROOT(buf.str());
+      }
+   }
+
  private:
    Basis basis_;
 
@@ -817,6 +832,45 @@ class AssembledStencil
    const Cell cell_;
 
    FormType form_;
+};
+
+template < typename FormType >
+class ConstantStencil
+{
+ public:
+   ConstantStencil( uint_t level, const Cell& cell, const FormType& form )
+       : level_( level )
+       , cell_( cell )
+       , form_( form )
+   {
+      form_.setGeometryMap( cell.getGeometryMap() );
+      stencil_ = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( {0, 0, 0}, cell_, level_, form_ );
+   }
+
+   void setY( real_t ) {  }
+
+   void setZ( real_t ) {  }
+
+   void setStartX( real_t , real_t , std::map< SD, real_t >& stencil )
+   {
+      assemble( stencil );
+   }
+
+   void incrementEval( std::map< SD, real_t >& stencil )
+   {
+      assemble( stencil );
+   };
+
+   void assemble( std::map< SD, real_t >& stencil ) { stencil = stencil_; }
+
+ private:
+   uint_t level_;
+
+   const Cell cell_;
+
+   FormType form_;
+
+   std::map< SD, real_t > stencil_;
 };
 
 void compare_stencil_vs_polynomial( uint_t                  x,
@@ -2088,6 +2142,8 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
       ldlt::p1::dim3::factorize_matrix( form, level, cell, factorization );
 
       interpolators.interpolate( polynomials );
+
+      polynomials.print();
    }
 
    void smooth_apply( const OperatorType&,

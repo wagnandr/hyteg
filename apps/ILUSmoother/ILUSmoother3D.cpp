@@ -206,6 +206,7 @@ int main( int argc, char** argv )
       using PermFormType = forms::p1_div_k_grad_blending_q3;
       PermFormType form_const( []( auto ) { return 1.; }, []( auto ) { return 1.; } );
       permutator.permutate( *setupStorage, ldlt::p1::dim3::ILUPermutator< PermFormType >( maxLevel, form_const ) );
+      // permutator.permutate( *setupStorage, ldlt::p1::dim3::ILUPermutatorHeuristic< PermFormType >( maxLevel, form_const ) );
    }
 
    const auto storage = std::make_shared< PrimitiveStorage >( *setupStorage );

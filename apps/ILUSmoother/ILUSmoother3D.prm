@@ -29,11 +29,11 @@ Parameters
   // domain squished_cube;
   // domain two_layer_cube_v2;
   // domain tetrahedron;
-  // domain two_layer_cube;
+  domain two_layer_cube;
   // domain tetrahedron_cap;
   // domain tetrahedron_spindle;
   // domain tetrahedron_regular;
-  domain tetrahedron_spade;
+  // domain tetrahedron_spade;
   // domain blended_shell_triangle_1;
   // domain blended_shell_triangle_2;
 
@@ -64,9 +64,9 @@ Parameters
 
   ilu_use_boundary_correction true;
 
-  op_surrogate_degree_x 8;
-  op_surrogate_degree_y 8;
-  op_surrogate_degree_z 8;
+  op_surrogate_degree_x 0;
+  op_surrogate_degree_y 0;
+  op_surrogate_degree_z 0;
   op_surrogate_assembly_level 5;
   op_surrogate_use_symmetry true;
 

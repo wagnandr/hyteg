@@ -31,6 +31,14 @@ Parameters
   // use PCG with mg preconditioner
   usePCG false;
 
+  kappa_type constant;
+
+  op_surrogate_degree_x 8;
+  op_surrogate_degree_y 8;
+  op_surrogate_degree_z 8;
+  op_surrogate_assembly_level 5;
+  op_surrogate_use_symmetry true;
+
   auto_permutation false;
 
   // which smoother: hyteg_gs, eigen_ilu, inplace_ldlt

@@ -18,7 +18,7 @@ def extract(data, error_type, stencil, level):
     degree = [d['degree'][0] for d in data]
     return degree, error
 
-fig, ax = plt.subplots(2, 4, sharey=False, sharex=True)
+fig, ax = plt.subplots(2, 4, sharey=False, sharex=True, figsize=(8,4))
 '''
 for s in stencils:
     deg, error = extract(data, 'l2_error_per_dof', s, 5)
@@ -36,6 +36,10 @@ for x in range(2):
                 label = f'level {level}'
             ax[x][y].set_title(stencil)
             ax[x][y].semilogy(deg, error, symbol, label=label)
+            if x == 1 and y != 2 and y != 1:
+                ax[x][y].set_xlabel('degree')
+            if y == 0:
+                ax[x][y].set_ylabel('$L^2$-error')
             ax[x][y].grid(True)
 
 handles, labels = ax[-1][-1].get_legend_handles_labels()
