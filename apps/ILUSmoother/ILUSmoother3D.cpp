@@ -211,15 +211,30 @@ int main( int argc, char** argv )
 
    const auto setupStorage = createDomain( parameters );
 
-   if ( parameters.getParameter< bool >( "auto_permutation" ) )
+   // permutation
    {
-      WALBERLA_LOG_INFO_ON_ROOT( "applying auto permutation" );
+      const std::string permutation_type = parameters.getParameter< std::string >( "permutation_type" );
       StoragePermutator permutator;
-      // permutator.permutate_ilu( *setupStorage );
       using PermFormType = forms::p1_div_k_grad_blending_q3;
       PermFormType form_const( []( auto ) { return 1.; }, []( auto ) { return 1.; } );
-      permutator.permutate( *setupStorage, ldlt::p1::dim3::ILUPermutator< PermFormType >( maxLevel, form_const ) );
-      // permutator.permutate( *setupStorage, ldlt::p1::dim3::ILUPermutatorHeuristic< PermFormType >( maxLevel, form_const ) );
+      if (permutation_type == "lfa")
+      {
+         WALBERLA_LOG_INFO_ON_ROOT("Applying LFA permutation.");
+         permutator.permutate( *setupStorage, ldlt::p1::dim3::ILUPermutator< PermFormType >( maxLevel, form_const ) );
+      }
+      else if (permutation_type == "heuristic")
+      {
+         WALBERLA_LOG_INFO_ON_ROOT("Applying heuristic permutation.");
+         permutator.permutate( *setupStorage, ldlt::p1::dim3::ILUPermutatorHeuristic< PermFormType >( maxLevel, form_const ) );
+      }
+      else if (permutation_type == "none")
+      {
+         WALBERLA_LOG_INFO_ON_ROOT("Applying NO permutation.");
+      }
+      else
+      {
+         WALBERLA_ABORT("Unknown permutation_type " << permutation_type);
+      }
    }
 
    const auto storage = std::make_shared< PrimitiveStorage >( *setupStorage );

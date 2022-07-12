@@ -46,7 +46,8 @@ Parameters
   kappa_upper 1.0;
   kappa_lower 1.0;
 
-  auto_permutation true;
+  // lfa, heuristic, none
+  permutation_type heuristic;
 
   // use PCG with mg preconditioner
   usePCG false;
