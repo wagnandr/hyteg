@@ -844,7 +844,7 @@ class ConstantStencil
        , form_( form )
    {
       form_.setGeometryMap( cell.getGeometryMap() );
-      stencil_ = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( {0, 0, 0}, cell_, level_, form_ );
+      stencil_ = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( {1, 1, 1}, cell_, level_, form_ );
    }
 
    void setY( real_t ) {  }
@@ -861,7 +861,9 @@ class ConstantStencil
       assemble( stencil );
    };
 
-   void assemble( std::map< SD, real_t >& stencil ) { stencil = stencil_; }
+   void assemble( std::map< SD, real_t >& stencil ) {
+      stencil = stencil_;
+   }
 
  private:
    uint_t level_;
@@ -1935,11 +1937,14 @@ class P1QSurrogateCellOperator : public Operator< P1Function< real_t >, P1Functi
    PrimitiveDataID< ldlt::p1::dim3::LDLTHierachicalPolynomials, Cell > opPolynomialsID_;
 };
 
+enum class MainOperatorStencilType { Constant, Varying, Polynomial };
+
 template < class OperatorType, class FormType, bool useBoundaryCorrection = false >
 class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
 {
  public:
    using FunctionType = typename OperatorType::srcType;
+
 
    P1LDLTSurrogateCellSmoother( std::shared_ptr< PrimitiveStorage > storage,
                                 uint_t                              minLevel,
@@ -1958,6 +1963,7 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
    , iluPolyDegree_( iluDegree )
    , opPolyDegree_( opDegree )
    , useSymmetryOfOperator_( useSymmetry )
+   , mainOperatorStencilType_( MainOperatorStencilType::Varying )
    {
       // storage for surrogate ldlt
       auto polyDataHandling = std::make_shared< ldlt::p1::dim3::LDLTHierachicalPolynomialsDataHandling >(
@@ -1984,6 +1990,8 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
       storage_->addCellData( boundaryID_, boundaryDataHandling, "P1LDLTSurrogateCellSmootherBoundary" );
    }
 
+   void setMainOperatorStencilType (MainOperatorStencilType type){ mainOperatorStencilType_ = type; }
+
    using SD = stencilDirection;
 
    void init( uint_t assemblyLevel, uint_t skipLevel )
@@ -1993,7 +2001,10 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
          Cell& cell = *it.second;
          for ( uint_t level = minLevel_; level <= maxLevel_; ++level )
          {
-            factorize_op_matrix_inplace( level, cell, form_, assemblyLevel );
+            if (mainOperatorStencilType_ == MainOperatorStencilType::Varying)
+            {
+               factorize_op_matrix_inplace( level, cell, form_, assemblyLevel );
+            }
             factorize_ldlt_matrix_inplace( level, cell, form_, skipLevel );
          }
       }
@@ -2164,21 +2175,37 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
 
       const real_t h = 1. / real_c( levelinfo::num_microedges_per_edge( level ) );
 
-      /*
-      using StencilProviderType = ldlt::p1::dim3::PolyStencil< 15 >;
-      StencilProviderType poly_stencil_a( polynomial_a.getDegrees(), ldlt::p1::dim3::allDirections );
-      if ( useSymmetryOfOperator_ )
-         poly_stencil_a.setPolynomialSymmetrical( polynomial_a, h );
+      if (mainOperatorStencilType_ == MainOperatorStencilType::Varying)
+      {
+         using StencilProviderType = ldlt::p1::dim3::AssembledStencil< FormType >;
+         StencilProviderType opStencilProvider( level, cell, form_ );
+
+         ldlt::p1::dim3::
+         apply_full_surrogate_ilu_smoothing_step< typename OperatorType::srcType, StencilProviderType, useBoundaryCorrection >(
+             opStencilProvider, polynomial_l, boundary, level, cell, u, tmp2_, b );
+      }
+      else if (mainOperatorStencilType_ == MainOperatorStencilType::Constant )
+      {
+         using StencilProviderType = ldlt::p1::dim3::ConstantStencil< FormType >;
+         StencilProviderType opStencilProvider( level, cell, form_ );
+
+         ldlt::p1::dim3::
+         apply_full_surrogate_ilu_smoothing_step< typename OperatorType::srcType, StencilProviderType, useBoundaryCorrection >(
+             opStencilProvider, polynomial_l, boundary, level, cell, u, tmp2_, b );
+      }
+      else if ( mainOperatorStencilType_ == MainOperatorStencilType::Polynomial )
+      {
+         using StencilProviderType = ldlt::p1::dim3::PolyStencil< 15 >;
+         StencilProviderType poly_stencil_a( polynomial_a.getDegrees(), ldlt::p1::dim3::allDirections );
+         if ( useSymmetryOfOperator_ )
+            poly_stencil_a.setPolynomialSymmetrical( polynomial_a, h );
+         else
+            poly_stencil_a.setPolynomial( polynomial_a );
+      }
       else
-         poly_stencil_a.setPolynomial( polynomial_a );
-      */
-
-      using StencilProviderType = ldlt::p1::dim3::AssembledStencil< FormType >;
-      StencilProviderType opStencilProvider( level, cell, form_ );
-
-      ldlt::p1::dim3::
-          apply_full_surrogate_ilu_smoothing_step< typename OperatorType::srcType, StencilProviderType, useBoundaryCorrection >(
-              opStencilProvider, polynomial_l, boundary, level, cell, u, tmp2_, b );
+      {
+         WALBERLA_ABORT("Given operator stencil type was not implemented");
+      }
    }
 
    void smooth_backwards( const OperatorType&                   A,
@@ -2250,6 +2277,8 @@ class P1LDLTSurrogateCellSmoother : public CellSmoother< OperatorType >
    PrimitiveDataID< ldlt::p1::dim3::LDLTHierachicalPolynomials, Cell > ldltPolynomialsID_;
 
    PrimitiveDataID< ldlt::p1::dim3::LDLTHierachicalPolynomials, Cell > opPolynomialsID_;
+
+   MainOperatorStencilType mainOperatorStencilType_;
 };
 
 template < class OperatorType, class FormType >

@@ -101,10 +101,22 @@ std::shared_ptr< hyteg::Solver< OperatorType > >
          // cell ilu
          const bool ilu_use_boundary_correction = parameters.getParameter< bool >( "ilu_use_boundary_correction" );
 
+         const std::string main_op_stencil_type_str = parameters.getParameter< std::string >( "main_operator_stencil_type" );
+         hyteg::MainOperatorStencilType main_op_stencil_type;
+         if ( main_op_stencil_type_str == "constant" )
+            main_op_stencil_type = hyteg::MainOperatorStencilType::Constant;
+         else if ( main_op_stencil_type_str == "varying" )
+            main_op_stencil_type = hyteg::MainOperatorStencilType::Varying;
+         else if ( main_op_stencil_type_str == "polynomial" )
+            main_op_stencil_type = hyteg::MainOperatorStencilType::Polynomial;
+         else
+            WALBERLA_ABORT( "Unknown stencil type" );
+
          if ( ilu_use_boundary_correction )
          {
             auto cell_smoother = std::make_shared< hyteg::P1LDLTSurrogateCellSmoother< OperatorType, FormType, true > >(
                 op.getStorage(), op.getMinLevel(), op.getMaxLevel(), opDegrees, iluDegrees, symmetry, form );
+            cell_smoother->setMainOperatorStencilType( main_op_stencil_type );
             cell_smoother->init( assemblyLevel, skipLevel );
             eigen_smoother->setCellSmoother( cell_smoother );
          }
@@ -112,6 +124,7 @@ std::shared_ptr< hyteg::Solver< OperatorType > >
          {
             auto cell_smoother = std::make_shared< hyteg::P1LDLTSurrogateCellSmoother< OperatorType, FormType, false > >(
                 op.getStorage(), op.getMinLevel(), op.getMaxLevel(), opDegrees, iluDegrees, symmetry, form );
+            cell_smoother->setMainOperatorStencilType( main_op_stencil_type );
             cell_smoother->init( assemblyLevel, skipLevel );
             eigen_smoother->setCellSmoother( cell_smoother );
          }

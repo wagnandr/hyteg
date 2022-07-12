@@ -29,8 +29,8 @@ Parameters
   // domain squished_cube;
   // domain two_layer_cube_v2;
   // domain tetrahedron;
-  domain two_layer_cube;
-  // domain tetrahedron_cap;
+  // domain two_layer_cube;
+  domain tetrahedron_cap;
   // domain tetrahedron_spindle;
   // domain tetrahedron_regular;
   // domain tetrahedron_spade;
@@ -52,8 +52,8 @@ Parameters
   usePCG false;
 
   // which smoother: hyteg_gs, eigen_ilu, inplace_ldlt
-  // smoother_type surrogate_ldlt;
-  smoother_type inplace_ldlt;
+  smoother_type surrogate_ldlt;
+  // smoother_type inplace_ldlt;
   // smoother_type gs;
   // smoother_type cell_gs;
 
@@ -63,6 +63,9 @@ Parameters
   ilu_surrogate_skip_level 4;
 
   ilu_use_boundary_correction true;
+
+  // constant, varying, polynomial
+  main_operator_stencil_type constant;
 
   op_surrogate_degree_x 0;
   op_surrogate_degree_y 0;
