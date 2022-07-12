@@ -290,8 +290,9 @@ real_t estimateAsymptoticSmootherRateGS( const Cell& cell, uint_t level, FormTyp
 template < typename FormType >
 real_t estimateAsymptoticSmootherRate( const std::array< Point3D, 4 >& coordinates, uint_t level, FormType form )
 {
-   auto a_stencil = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { 2, 2, 2 }, coordinates, level, form );
-   auto l_stencil_asymptotic = ldlt::p1::dim3::calculateAsymptoticLDLTStencil( a_stencil );
+   auto a_stencil_v2 = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { 1, 1, 1 }, coordinates, level, form );
+   auto l_stencil_asymptotic = ldlt::p1::dim3::calculateAsymptoticLDLTStencil( a_stencil_v2 );
+   auto a_stencil = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { 1, 1, 1 }, coordinates, level, form );
 
    const auto h = ldlt::p1::dim3::getMicroEdgeWidths( coordinates, level );
 
@@ -725,12 +726,12 @@ std::array< real_t, 3 > get_triangle_angles( const Cell& cell, const std::vector
    return angles;
 }
 
-std::array< real_t, 3 > get_distances( const Cell& cell, const std::vector< uint_t >& vertexIds, uint_t opposite )
+std::vector< real_t > get_distances( const Cell& cell, const std::vector< uint_t >& vertexIds, uint_t opposite )
 {
    return {
-       (cell.getCoordinates()[vertexIds[0]] - cell.getCoordinates()[opposite]).norm(),
-       (cell.getCoordinates()[vertexIds[1]] - cell.getCoordinates()[opposite]).norm(),
-       (cell.getCoordinates()[vertexIds[2]] - cell.getCoordinates()[opposite]).norm(),
+       ( cell.getCoordinates()[vertexIds[0]] - cell.getCoordinates()[opposite] ).norm(),
+       ( cell.getCoordinates()[vertexIds[1]] - cell.getCoordinates()[opposite] ).norm(),
+       ( cell.getCoordinates()[vertexIds[2]] - cell.getCoordinates()[opposite] ).norm(),
    };
 }
 
@@ -763,52 +764,110 @@ uint_t getMaxAreaTriangle( const Cell& cell )
    return maxAreaIndex;
 }
 
+uint_t max_index( const std::vector< real_t >& values, const std::vector< uint_t >& indices )
+{
+   auto max       = max_element( values.begin(), values.end() ); // [2, 4)
+   int  argmaxVal = distance( values.begin(), max );               // absolute index of max
+   return indices.at( argmaxVal );
+}
+
+uint_t min_index( const std::vector< real_t >& values, const std::vector< uint_t >& indices )
+{
+   auto min       = min_element( values.begin(), values.end() ); // [2, 4)
+   int  argminVal = distance( values.begin(), min );               // absolute index of max
+   return indices.at( argminVal );
+}
+
+std::vector< uint_t > ordering_permutation (const std::vector< real_t > & values, const std::vector< uint_t >& globalIndices)
+{
+   std::vector<uint_t> index(values.size(), 0);
+   for (uint_t i = 0 ; i != index.size() ; i++) {
+      index[i] = i;
+   }
+   std::sort(index.begin(), index.end(),
+         [&](const uint_t& a, const uint_t & b) {
+            return (values[a] < values[b]);
+         }
+   );
+   std::vector< uint_t > result;
+   for (auto i : index)
+      result.push_back(globalIndices[i]);
+   return result;
+}
+
 std::array< uint_t, 4 > permutation_ilu_heuristic_3d( const Cell& cell )
 {
    // find largest area facet
-   // auto maxAreaIndex = getMaxAreaTriangle( cell );
-   //auto maxAreaIndex = getMaxAngleTriangle(cell);
-   // auto maxAreaIndex      = getMinAngleTriangle( cell );
-   auto maxAreaIndex      = getMinHeightBaseTriangle( cell );
-   // auto maxAreaIndex      = getMaxHeightBaseTriangle( cell );
+   auto maxAreaIndex = getMaxAreaTriangle( cell );
+   // auto maxAreaIndex = getMinHeightBaseTriangle( cell );
+
+   // find opposite triangle
    auto maxLocalVertexIds = getVertexIds( maxAreaIndex );
 
-   // permutate facet such that largest to smallest angle
-   // const auto angles = get_triangle_angles( cell, maxLocalVertexIds );
-   const auto angles = get_distances( cell, maxLocalVertexIds, maxAreaIndex );
+   WALBERLA_LOG_INFO_ON_ROOT( "coordinates " << cell.getCoordinates()[0] << " " << cell.getCoordinates()[1] << " " << cell.getCoordinates()[2]
+                                             << " " << cell.getCoordinates()[3] );
 
-   auto maxElementIdx = static_cast< uint_t >( std::max_element( angles.begin(), angles.end() ) - angles.begin() );
-   auto minElementIdx = static_cast< uint_t >( std::min_element( angles.begin(), angles.end() ) - angles.begin() );
+   WALBERLA_LOG_INFO_ON_ROOT("opposite " << maxAreaIndex);
 
-   if ( minElementIdx == maxElementIdx )
-      minElementIdx = ( maxElementIdx + 1 ) % 3;
 
-   uint_t otherElementIdx = 0;
-   for ( uint_t i = 0; i < 3; i += 1 )
+   /*
+   const auto distances = get_distances( cell, maxLocalVertexIds, maxAreaIndex );
+   auto permutation = ordering_permutation(distances, maxLocalVertexIds);
+
+   return {
+      permutation[0],
+      permutation[1],
+      permutation[2],
+      maxAreaIndex
+   };
+    */
+
+   // distances
+   const auto distances        = get_distances( cell, maxLocalVertexIds, maxAreaIndex );
+   auto       minDistanceIndex = min_index( distances, maxLocalVertexIds );
+
+   WALBERLA_LOG_INFO_ON_ROOT("local vertex ids " <<
+                              maxLocalVertexIds[0] << " " <<
+                              maxLocalVertexIds[1] << " " <<
+                              maxLocalVertexIds[2]
+   );
+
+   WALBERLA_LOG_INFO_ON_ROOT("distances " <<
+       distances[0] << " " <<
+       distances[1] << " " <<
+       distances[2]
+   );
+
+   const auto angles          = get_triangle_angles( cell, maxLocalVertexIds );
+   uint_t     min_angle_index = 100;
+   real_t     min_angle       = 100;
+   for ( uint_t i = 0; i < maxLocalVertexIds.size(); i += 1 )
    {
-      if ( minElementIdx == i )
+      if ( maxLocalVertexIds[i] == maxAreaIndex )
          continue;
-      else if ( maxElementIdx == i )
+      if ( maxLocalVertexIds[i] == minDistanceIndex )
          continue;
-      else
+      if ( angles[i] < min_angle )
       {
-         otherElementIdx = i;
-         break;
+         min_angle = angles[i];
+         min_angle_index = maxLocalVertexIds[i];
       }
    }
+   uint_t other_index = 100;
+   for ( uint_t i = 0; i < maxLocalVertexIds.size(); i += 1 )
+   {
+      if ( maxLocalVertexIds[i] == maxAreaIndex )
+         continue;
+      if ( maxLocalVertexIds[i] == minDistanceIndex )
+         continue;
+      if ( maxLocalVertexIds[i] == min_angle_index )
+         continue;
+      other_index = maxLocalVertexIds[i];
+   }
 
-   /*
-   std::array< uint_t, 4 > permutation = {
-       maxLocalVertexIds[maxElementIdx], maxLocalVertexIds[minElementIdx], maxLocalVertexIds[otherElementIdx], maxAreaIndex };
-   */
+   WALBERLA_LOG_INFO_ON_ROOT( minDistanceIndex<< " " <<  min_angle_index<< " " <<  other_index<< " " <<  maxAreaIndex );
 
-   /*
-   std::array< uint_t, 4 > permutation = {
-       maxLocalVertexIds[minElementIdx], maxLocalVertexIds[otherElementIdx], maxLocalVertexIds[maxElementIdx], maxAreaIndex };
-   */
-
-   std::array< uint_t, 4 > permutation = {
-       maxLocalVertexIds[minElementIdx], maxLocalVertexIds[otherElementIdx], maxLocalVertexIds[maxElementIdx], maxAreaIndex };
+   std::array< uint_t, 4 > permutation = { minDistanceIndex, min_angle_index, other_index, maxAreaIndex };
 
    return permutation;
 }
@@ -830,16 +889,13 @@ class ILUPermutatorHeuristic
 {
  public:
    ILUPermutatorHeuristic( uint_t level, FormType& )
-       : level_( level )
+   : level_( level )
    {}
 
-   std::array< uint_t, 4 > operator()( const Cell& cell )
-   {
-      return permutation_ilu_heuristic_3d( cell );
-   }
+   std::array< uint_t, 4 > operator()( const Cell& cell ) { return permutation_ilu_heuristic_3d( cell ); }
 
  private:
-   uint_t   level_;
+   uint_t level_;
 };
 
 template < typename FormType >
