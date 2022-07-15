@@ -1,5 +1,6 @@
 #pragma once
 
+// #include "hyteg/LikwidWrapper.hpp"
 #include "hyteg/polynomial/LSQPInterpolator.hpp"
 #include "hyteg/polynomial/QuadrilateralBasis.hpp"
 #include "hyteg/polynomial/QuadrilateralLSQPInterpolator.hpp"
@@ -1139,6 +1140,7 @@ void apply_surrogate_substitutions( LDLTBoundaryStencils& boundaryStencils,
                apply_forward_substitution( x, y, z, l_stencil, b, u );
             }
 
+            // LIKWID_MARKER_START( "forward_inner" );
             // x inner:
             for ( uint_t x = 1 + boundarySize; x <= N_edge - 2 - boundarySize - z - y; x += 1 )
             {
@@ -1147,6 +1149,7 @@ void apply_surrogate_substitutions( LDLTBoundaryStencils& boundaryStencils,
                   get_l_stencil( x, y, z, l_stencil );
                apply_forward_substitution( x, y, z, l_stencil, b, u );
             }
+            // LIKWID_MARKER_STOP( "forward_inner" );
 
             // x east:
             for ( uint_t x = std::max( 1 + boundarySize, N_edge - 1 - boundarySize - z - y ); x <= N_edge - 2 - z - y; x += 1 )
@@ -1298,6 +1301,7 @@ void apply_surrogate_substitutions( LDLTBoundaryStencils& boundaryStencils,
                apply_backward_substitution( x, y, z, l_stencil, b, u );
             }
 
+            // LIKWID_MARKER_START( "backward_inner" );
             // x inner:
             for ( uint_t x = N_edge - 2 - boundarySize - z - y; x >= 1 + boundarySize; x -= 1 )
             {
@@ -1312,6 +1316,7 @@ void apply_surrogate_substitutions( LDLTBoundaryStencils& boundaryStencils,
                apply_diagonal_scaling( x, y, z, d_stencil, b, u );
                apply_backward_substitution( x, y, z, l_stencil, b, u );
             }
+            // LIKWID_MARKER_STOP( "backward_inner" );
 
             // x east:
             for ( uint_t x = std::min( boundarySize, N_edge - 2 - boundarySize - z - y ); x >= 1; x -= 1 )

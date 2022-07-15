@@ -350,7 +350,12 @@ real_t estimateAsymptoticSmootherRate( const std::array< Point3D, 4 >& coordinat
             auto symbol_d    = ldlt::p1::dim3::calculateSymbol( d_stencil, theta, h );
             auto symbol_ldlt = symbol_l * symbol_d * symbol_lt;
 
-            auto symbol = std::abs( ( symbol_ldlt - symbol_a ) / symbol_ldlt );
+            WALBERLA_LOG_INFO_ON_ROOT(symbol_d << " " << symbol_a);
+
+            auto symbol = std::abs( 1. - symbol_a / symbol_ldlt );
+
+            if (symbol > 0.9)
+               WALBERLA_LOG_INFO_ON_ROOT("");
 
             max_symbol = std::max( symbol, max_symbol );
             mean_symbol += symbol;

@@ -61,7 +61,7 @@ int main( int argc, char** argv )
    walberla::Config::BlockHandle parameters = cfg->getOneBlock( "Parameters" );
    parameters.listParameters();
 
-   const uint_t level = 8;
+   const uint_t level = 6;
 
    const std::string smoother_type = parameters.getParameter< std::string >( "smoother_type" );
 
@@ -454,71 +454,91 @@ int main( int argc, char** argv )
        -728.71,   -20813.8,   -82607.2,   -262217,   -319305,     -256686,    -11.9389,    -6632.6,     13892.4,   -11112.1,
        -144389,   -172213,    -130667 };
 
+   WALBERLA_LOG_INFO_ON_ROOT("now");
    {
       ldlt::p1::dim3::LDLTPolynomials ldltPolynomials( { 6, 6, 6 }, ldlt::p1::dim3::lowerDirectionsAndCenter );
 
+      WALBERLA_LOG_INFO_ON_ROOT("c");
       for ( uint_t idx = 0; idx < c.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_C ).setCoefficient( idx, c[idx] );
 
+      WALBERLA_LOG_INFO_ON_ROOT("s");
       for ( uint_t idx = 0; idx < s.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_S ).setCoefficient( idx, s[idx] );
 
+      WALBERLA_LOG_INFO_ON_ROOT("se");
       for ( uint_t idx = 0; idx < se.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_SE ).setCoefficient( idx, se[idx] );
 
+      WALBERLA_LOG_INFO_ON_ROOT("w");
       for ( uint_t idx = 0; idx < w.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_W ).setCoefficient( idx, w[idx] );
 
+      WALBERLA_LOG_INFO_ON_ROOT("bc");
       for ( uint_t idx = 0; idx < bc.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_BC ).setCoefficient( idx, bc[idx] );
 
+      WALBERLA_LOG_INFO_ON_ROOT("be");
       for ( uint_t idx = 0; idx < be.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_BE ).setCoefficient( idx, be[idx] );
 
+      WALBERLA_LOG_INFO_ON_ROOT("bn");
       for ( uint_t idx = 0; idx < bn.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_BN ).setCoefficient( idx, bn[idx] );
 
+      WALBERLA_LOG_INFO_ON_ROOT("bnw");
       for ( uint_t idx = 0; idx < bnw.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_BNW ).setCoefficient( idx, bnw[idx] );
 
+      WALBERLA_LOG_INFO_ON_ROOT("bi");
       LIKWID_MARKER_INIT;
-      LIKWID_MARKER_REGISTER("smooth1");
-      LIKWID_MARKER_REGISTER("smooth2");
-      LIKWID_MARKER_REGISTER("smooth3");
+      WALBERLA_LOG_INFO_ON_ROOT("bs");
+      // LIKWID_MARKER_REGISTER( "smooth1" );
+      // LIKWID_MARKER_REGISTER( "smooth2" );
+      // LIKWID_MARKER_REGISTER( "smooth3" );
+      // LIKWID_MARKER_REGISTER( "forward_inner" );
+      // LIKWID_MARKER_REGISTER( "backward_inner" );
+      WALBERLA_LOG_INFO_ON_ROOT("as");
       for ( auto cit : storage->getCells() )
       {
          Cell& cell = *cit.second;
 
+         WALBERLA_LOG_INFO_ON_ROOT("cs");
          ldlt::p1::dim3::ConstantStencil opStencilProvider( level, cell, form );
          // ldlt::p1::dim3::AssembledStencil< FormType > opStencilProvider (level, cell, form);
 
+         WALBERLA_LOG_INFO_ON_ROOT("b");
          ldlt::p1::dim3::LDLTBoundaryStencils boundary;
 
-         for (uint_t i = 0; i < 10; i+= 1)
+         WALBERLA_LOG_INFO_ON_ROOT("bl");
+         for ( uint_t i = 0; i < 1; i += 1 )
          {
-            LIKWID_MARKER_START("smooth1");
+            WALBERLA_LOG_INFO_ON_ROOT( "sm1" );
+            LIKWID_MARKER_START( "smooth1" );
             ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step< hyteg::P1Function< real_t >,
-                ldlt::p1::dim3::ConstantStencil< FormType >,
-                true,
-                false >(
+                                                                     ldlt::p1::dim3::ConstantStencil< FormType >,
+                                                                     true,
+                                                                     false >(
                 opStencilProvider, ldltPolynomials, boundary, level, cell, src, tmp1, dst );
-            LIKWID_MARKER_STOP("smooth1");
+            LIKWID_MARKER_STOP( "smooth1" );
 
-            LIKWID_MARKER_START("smooth2");
+            WALBERLA_LOG_INFO_ON_ROOT( "sm2" );
+            LIKWID_MARKER_START( "smooth2" );
             ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step< hyteg::P1Function< real_t >,
-                ldlt::p1::dim3::ConstantStencil< FormType >,
-                true,
-                false >(
+                                                                     ldlt::p1::dim3::ConstantStencil< FormType >,
+                                                                     true,
+                                                                     false >(
                 opStencilProvider, ldltPolynomials, boundary, level, cell, src2, tmp2, dst2 );
-            LIKWID_MARKER_STOP("smooth2");
+            LIKWID_MARKER_STOP( "smooth2" );
 
-            LIKWID_MARKER_START("smooth3");
+            WALBERLA_LOG_INFO_ON_ROOT( "sm3" );
+            LIKWID_MARKER_START( "smooth3" );
             ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step< hyteg::P1Function< real_t >,
-                ldlt::p1::dim3::ConstantStencil< FormType >,
+                                                                     ldlt::p1::dim3::ConstantStencil< FormType >,
                                                                      true,
                                                                      false >(
                 opStencilProvider, ldltPolynomials, boundary, level, cell, src3, tmp3, dst3 );
-            LIKWID_MARKER_STOP("smooth3");
+            LIKWID_MARKER_STOP( "smooth3" );
          }
       }
       LIKWID_MARKER_CLOSE;
