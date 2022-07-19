@@ -61,7 +61,7 @@ int main( int argc, char** argv )
    walberla::Config::BlockHandle parameters = cfg->getOneBlock( "Parameters" );
    parameters.listParameters();
 
-   const uint_t level = 6;
+   const uint_t level = 8;
 
    const std::string smoother_type = parameters.getParameter< std::string >( "smoother_type" );
 
@@ -69,6 +69,7 @@ int main( int argc, char** argv )
        hyteg::MeshInfo::meshCuboid( hyteg::Point3D( { 0, 0, 0 } ), hyteg::Point3D( { 1, 1, 1 } ), 1, 1, 1 );
    auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
        meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
+   WALBERLA_LOG_INFO_ON_ROOT("num processors " << walberla::mpi::MPIManager::instance()->numProcesses());
    setupStorage->setMeshBoundaryFlagsOnBoundary( 1, 0, true );
    const auto storage = std::make_shared< PrimitiveStorage >( *setupStorage );
 

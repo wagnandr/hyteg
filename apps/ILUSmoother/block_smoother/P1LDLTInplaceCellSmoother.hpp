@@ -1671,6 +1671,7 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
 
       std::array< real_t, 15 > a_stencil{};
 
+      LIKWID_MARKER_START( "forward:new" );
       // z bottom:
       for ( uint_t z = 1; z < 1 + boundarySize; z += 1 )
       {
@@ -1738,7 +1739,7 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
                apply_forward_substitution( x, y, z, l_stencil, w );
             }
 
-            LIKWID_MARKER_START( "forward:inner:new" );
+            // LIKWID_MARKER_START( "forward:inner:new" );
             // x inner:
             for ( uint_t x = 1 + boundarySize; x <= N_edge - 2 - boundarySize - z - y; x += 1 )
             {
@@ -1749,7 +1750,7 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
                poly_stencil_lower.incrementEval( l_stencil );
                apply_forward_substitution( x, y, z, l_stencil, w );
             }
-            LIKWID_MARKER_STOP( "forward:inner:new" );
+            // LIKWID_MARKER_STOP( "forward:inner:new" );
 
             // x east:
             for ( uint_t x = std::max( 1 + boundarySize, N_edge - 1 - boundarySize - z - y ); x <= N_edge - 2 - z - y; x += 1 )
@@ -1807,6 +1808,7 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
             }
          }
       }
+      LIKWID_MARKER_STOP( "forward:new" );
    }
 
    // ---------------------------------
@@ -1831,6 +1833,7 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
       std::array< real_t, 1 > d_stencil{};
 
       // z top
+      LIKWID_MARKER_START( "backward:new" );
       for ( uint_t z = N_edge - 2; z > N_edge - 2 - boundarySize; z -= 1 )
       {
          poly_stencil_lower.setZ( h * real_c( z ) );
@@ -1895,7 +1898,7 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
             }
 
             // x inner:
-            LIKWID_MARKER_START( "backward:inner:new" );
+            // LIKWID_MARKER_START( "backward:inner:new" );
             for ( uint_t x = N_edge - 2 - boundarySize - z - y; x >= 1 + boundarySize; x -= 1 )
             {
                poly_stencil_lower.incrementEval( l_stencil );
@@ -1906,7 +1909,7 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
                apply_backward_substitution( x, y, z, l_stencil, w );
                add_correction( x, y, z, w, u );
             }
-            LIKWID_MARKER_STOP( "backward:inner:new" );
+            // LIKWID_MARKER_STOP( "backward:inner:new" );
 
             // x east:
             for ( uint_t x = std::min( boundarySize, N_edge - 2 - boundarySize - z - y ); x >= 1; x -= 1 )
@@ -1960,6 +1963,7 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
             }
          }
       }
+      LIKWID_MARKER_STOP( "backward:new" );
    }
 }
 
@@ -2074,6 +2078,8 @@ void apply_full_surrogate_ilu_smoothing_step( OpStencilProviderType& opStencilPr
 
       std::map< SD, real_t > a_stencil;
 
+      LIKWID_MARKER_START( "forward:old" );
+
       // z bottom:
       for ( uint_t z = 1; z < 1 + boundarySize; z += 1 )
       {
@@ -2150,7 +2156,7 @@ void apply_full_surrogate_ilu_smoothing_step( OpStencilProviderType& opStencilPr
                apply_forward_substitution( x, y, z, l_stencil, w );
             }
 
-            LIKWID_MARKER_START( "forward:inner" );
+            // LIKWID_MARKER_START( "forward:inner" );
             // x inner:
             for ( uint_t x = 1 + boundarySize; x <= N_edge - 2 - boundarySize - z - y; x += 1 )
             {
@@ -2163,7 +2169,7 @@ void apply_full_surrogate_ilu_smoothing_step( OpStencilProviderType& opStencilPr
                   get_l_stencil( x, y, z, l_stencil );
                apply_forward_substitution( x, y, z, l_stencil, w );
             }
-            LIKWID_MARKER_STOP( "forward:inner" );
+            // LIKWID_MARKER_STOP( "forward:inner" );
 
             // x east:
             for ( uint_t x = std::max( 1 + boundarySize, N_edge - 1 - boundarySize - z - y ); x <= N_edge - 2 - z - y; x += 1 )
@@ -2230,6 +2236,7 @@ void apply_full_surrogate_ilu_smoothing_step( OpStencilProviderType& opStencilPr
             }
          }
       }
+      LIKWID_MARKER_STOP( "forward:old" );
    }
 
    // ---------------------------------
@@ -2253,6 +2260,7 @@ void apply_full_surrogate_ilu_smoothing_step( OpStencilProviderType& opStencilPr
 
       std::map< SD, real_t > d_stencil;
 
+      LIKWID_MARKER_START( "backward:old" );
       // z top
       for ( uint_t z = N_edge - 2; z > N_edge - 2 - boundarySize; z -= 1 )
       {
@@ -2335,7 +2343,7 @@ void apply_full_surrogate_ilu_smoothing_step( OpStencilProviderType& opStencilPr
                add_correction( x, y, z, w, u );
             }
 
-            LIKWID_MARKER_START( "backward:inner" );
+            // LIKWID_MARKER_START( "backward:inner" );
             // x inner:
             for ( uint_t x = N_edge - 2 - boundarySize - z - y; x >= 1 + boundarySize; x -= 1 )
             {
@@ -2351,7 +2359,7 @@ void apply_full_surrogate_ilu_smoothing_step( OpStencilProviderType& opStencilPr
                apply_backward_substitution( x, y, z, l_stencil, w );
                add_correction( x, y, z, w, u );
             }
-            LIKWID_MARKER_STOP( "backward:inner" );
+            // LIKWID_MARKER_STOP( "backward:inner" );
 
             // x east:
             for ( uint_t x = std::min( boundarySize, N_edge - 2 - boundarySize - z - y ); x >= 1; x -= 1 )
@@ -2423,6 +2431,7 @@ void apply_full_surrogate_ilu_smoothing_step( OpStencilProviderType& opStencilPr
             }
          }
       }
+      LIKWID_MARKER_STOP( "backward:old" );
    }
 }
 
