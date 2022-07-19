@@ -285,6 +285,17 @@ void apply_boundary_corrections_on_backward_stencil( uint_t x, uint_t y, uint_t 
    stencil[SD::VERTEX_BE] = apply_boundary_corrections_to_scalar( x - 1, y, z + 1, N, SD::VERTEX_BE, stencil[SD::VERTEX_BE] );
 }
 
+void apply_boundary_corrections_on_backward_stencil( uint_t x, uint_t y, uint_t z, uint_t N, std::array< real_t, 7 >& stencil )
+{
+   stencil[0] = apply_boundary_corrections_to_scalar( x + 1, y, z, N, SD::VERTEX_W, stencil[0] );
+   stencil[1] = apply_boundary_corrections_to_scalar( x, y + 1, z, N, SD::VERTEX_S, stencil[1] );
+   stencil[2] = apply_boundary_corrections_to_scalar( x - 1, y + 1, z, N, SD::VERTEX_SE, stencil[2] );
+   stencil[3] = apply_boundary_corrections_to_scalar( x + 1, y - 1, z + 1, N, SD::VERTEX_BNW, stencil[3] );
+   stencil[4] = apply_boundary_corrections_to_scalar( x, y - 1, z + 1, N, SD::VERTEX_BN, stencil[4] );
+   stencil[5] = apply_boundary_corrections_to_scalar( x, y, z + 1, N, SD::VERTEX_BC, stencil[5] );
+   stencil[6] = apply_boundary_corrections_to_scalar( x - 1, y, z + 1, N, SD::VERTEX_BE, stencil[6] );
+}
+
 template < typename FormType, typename FactorizationCallback >
 void factorize_matrix( FormType& form, uint_t level, Cell& cell, const FactorizationCallback& cb )
 {
@@ -1841,7 +1852,17 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
    // diagonal & backward substitution:
    // ---------------------------------
    {
-      PolyStencil< 7 > poly_stencil_lower( polynomials_l.getDegrees(), lowerDirections );
+      // PolyStencil< 7 > poly_stencil_lower( polynomials_l.getDegrees(), lowerDirections );
+      // poly_stencil_lower.setPolynomial( polynomials_l );
+      // poly_stencil_lower.setOffset( SD::VERTEX_W, h, 0, 0 );
+      // poly_stencil_lower.setOffset( SD::VERTEX_S, 0, h, 0 );
+      // poly_stencil_lower.setOffset( SD::VERTEX_SE, -h, h, 0 );
+      // poly_stencil_lower.setOffset( SD::VERTEX_BNW, +h, -h, +h );
+      // poly_stencil_lower.setOffset( SD::VERTEX_BN, 0, -h, +h );
+      // poly_stencil_lower.setOffset( SD::VERTEX_BC, 0, 0, +h );
+      // poly_stencil_lower.setOffset( SD::VERTEX_BE, -h, 0, +h );
+
+      PolyStencilNew< 7 > poly_stencil_lower( polynomials_l.getDegrees(), lowerDirections );
       poly_stencil_lower.setPolynomial( polynomials_l );
       poly_stencil_lower.setOffset( SD::VERTEX_W, h, 0, 0 );
       poly_stencil_lower.setOffset( SD::VERTEX_S, 0, h, 0 );
@@ -1851,29 +1872,19 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
       poly_stencil_lower.setOffset( SD::VERTEX_BC, 0, 0, +h );
       poly_stencil_lower.setOffset( SD::VERTEX_BE, -h, 0, +h );
 
-      PolyStencilNew< 7 > poly_stencil_lower_new( polynomials_l.getDegrees(), lowerDirections );
-      poly_stencil_lower_new.setPolynomial( polynomials_l );
-      poly_stencil_lower_new.setOffset( SD::VERTEX_W, h, 0, 0 );
-      poly_stencil_lower_new.setOffset( SD::VERTEX_S, 0, h, 0 );
-      poly_stencil_lower_new.setOffset( SD::VERTEX_SE, -h, h, 0 );
-      poly_stencil_lower_new.setOffset( SD::VERTEX_BNW, +h, -h, +h );
-      poly_stencil_lower_new.setOffset( SD::VERTEX_BN, 0, -h, +h );
-      poly_stencil_lower_new.setOffset( SD::VERTEX_BC, 0, 0, +h );
-      poly_stencil_lower_new.setOffset( SD::VERTEX_BE, -h, 0, +h );
+      // std::map< SD, real_t > l_stencil;
 
-      std::map< SD, real_t > l_stencil;
+      std::array< real_t, 7 > l_stencil;
 
-      std::array< real_t, 7 > l_stencil_new;
+      // PolyStencil< 1 > poly_stencil_diagonal( polynomials_l.getDegrees(), { SD::VERTEX_C } );
+      // poly_stencil_diagonal.setPolynomial( polynomials_l );
 
-      PolyStencil< 1 > poly_stencil_diagonal( polynomials_l.getDegrees(), { SD::VERTEX_C } );
+      PolyStencilNew< 1 > poly_stencil_diagonal( polynomials_l.getDegrees(), { SD::VERTEX_C } );
       poly_stencil_diagonal.setPolynomial( polynomials_l );
 
-      PolyStencilNew< 1 > poly_stencil_diagonal_new( polynomials_l.getDegrees(), { SD::VERTEX_C } );
-      poly_stencil_diagonal_new.setPolynomial( polynomials_l );
+      // std::map< SD, real_t > d_stencil;
 
-      std::map< SD, real_t > d_stencil;
-
-      std::array< real_t, 1 > d_stencil_new;
+      std::array< real_t, 1 > d_stencil;
 
       // z top
       for ( uint_t z = N_edge - 2; z > N_edge - 2 - boundarySize; z -= 1 )
@@ -1885,14 +1896,14 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
             poly_stencil_lower.setY( h * real_c( y ) );
             poly_stencil_lower.setStartX( h * real_c( N_edge - 2 - z - y + 1 ), -h, l_stencil );
             poly_stencil_diagonal.setY( h * real_c( y ) );
-            poly_stencil_diagonal.setStartX( h * real_c( N_edge - 2 - z - y + 1 ), -h, l_stencil );
+            poly_stencil_diagonal.setStartX( h * real_c( N_edge - 2 - z - y + 1 ), -h, d_stencil );
             for ( uint_t x = N_edge - 2 - z - y; x >= 1; x -= 1 )
             {
                poly_stencil_lower.incrementEval( l_stencil );
                poly_stencil_diagonal.incrementEval( d_stencil );
                apply_boundary_corrections_on_backward_stencil( x, y, z, N_edge, l_stencil );
-               apply_diagonal_scaling( x, y, z, d_stencil, w );
-               apply_backward_substitution( x, y, z, l_stencil, w );
+               apply_diagonal_scaling_new( x, y, z, d_stencil, w );
+               apply_backward_substitution_new( x, y, z, l_stencil, w );
                add_correction( x, y, z, w, u );
             }
          }
@@ -1902,23 +1913,21 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
       for ( uint_t z = N_edge - 2 - boundarySize; z >= 1 + boundarySize; z -= 1 )
       {
          poly_stencil_lower.setZ( h * real_c( z ) );
-         poly_stencil_lower_new.setZ( h * real_c( z ) );
          poly_stencil_diagonal.setZ( h * real_c( z ) );
-         poly_stencil_diagonal_new.setZ( h * real_c( z ) );
          // y north:
          for ( uint_t y = N_edge - 2 - z; y > N_edge - 2 - boundarySize - z; y -= 1 )
          {
             poly_stencil_lower.setY( h * real_c( y ) );
             poly_stencil_lower.setStartX( h * real_c( N_edge - 2 - z - y + 1 ), -h, l_stencil );
             poly_stencil_diagonal.setY( h * real_c( y ) );
-            poly_stencil_diagonal.setStartX( h * real_c( N_edge - 2 - z - y + 1 ), -h, l_stencil );
+            poly_stencil_diagonal.setStartX( h * real_c( N_edge - 2 - z - y + 1 ), -h, d_stencil );
             for ( uint_t x = N_edge - 2 - z - y; x >= 1; x -= 1 )
             {
                poly_stencil_lower.incrementEval( l_stencil );
                poly_stencil_diagonal.incrementEval( d_stencil );
                apply_boundary_corrections_on_backward_stencil( x, y, z, N_edge, l_stencil );
-               apply_diagonal_scaling( x, y, z, d_stencil, w );
-               apply_backward_substitution( x, y, z, l_stencil, w );
+               apply_diagonal_scaling_new( x, y, z, d_stencil, w );
+               apply_backward_substitution_new( x, y, z, l_stencil, w );
                add_correction( x, y, z, w, u );
             }
          }
@@ -1929,43 +1938,45 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
             poly_stencil_lower.setY( h * real_c( y ) );
             poly_stencil_lower.setStartX( h * real_c( N_edge - 2 - z - y + 1 ), -h, l_stencil );
             poly_stencil_diagonal.setY( h * real_c( y ) );
-            poly_stencil_diagonal.setStartX( h * real_c( N_edge - 2 - z - y + 1 ), -h, l_stencil );
+            poly_stencil_diagonal.setStartX( h * real_c( N_edge - 2 - z - y + 1 ), -h, d_stencil );
             // x west:
             for ( uint_t x = N_edge - 2 - z - y; x > N_edge - 2 - boundarySize - z - y; x -= 1 )
             {
                poly_stencil_lower.incrementEval( l_stencil );
                poly_stencil_diagonal.incrementEval( d_stencil );
                apply_boundary_corrections_on_backward_stencil( x, y, z, N_edge, l_stencil );
-               apply_diagonal_scaling( x, y, z, d_stencil, w );
-               apply_backward_substitution( x, y, z, l_stencil, w );
+               apply_diagonal_scaling_new( x, y, z, d_stencil, w );
+               apply_backward_substitution_new( x, y, z, l_stencil, w );
                add_correction( x, y, z, w, u );
             }
 
             // x inner:
-            poly_stencil_lower_new.setY( h * real_c( y ) );
-            poly_stencil_lower_new.setStartX( h * real_c( N_edge - 2 - boundarySize - z - y + 1 ), -h, l_stencil_new );
-            poly_stencil_diagonal_new.setY( h * real_c( y ) );
-            poly_stencil_diagonal_new.setStartX( h * real_c( N_edge - 2 - boundarySize - z - y + 1 ), -h, d_stencil_new );
+            // poly_stencil_lower_new.setY( h * real_c( y ) );
+            // poly_stencil_lower_new.setStartX( h * real_c( N_edge - 2 - boundarySize - z - y + 1 ), -h, l_stencil_new );
+            // poly_stencil_diagonal_new.setY( h * real_c( y ) );
+            // poly_stencil_diagonal_new.setStartX( h * real_c( N_edge - 2 - boundarySize - z - y + 1 ), -h, d_stencil_new );
             LIKWID_MARKER_START( "backward:inner:new" );
             for ( uint_t x = N_edge - 2 - boundarySize - z - y; x >= 1 + boundarySize; x -= 1 )
             {
-               poly_stencil_lower_new.incrementEval( l_stencil_new );
+               poly_stencil_lower.incrementEval( l_stencil);
                // poly_stencil_lower.incrementEval( l_stencil );
-               poly_stencil_diagonal_new.incrementEval( d_stencil_new );
+               poly_stencil_diagonal.incrementEval( d_stencil );
                // poly_stencil_diagonal.incrementEval( d_stencil );
 
                // apply_diagonal_scaling( x, y, z, d_stencil, w );
-               apply_diagonal_scaling_new( x, y, z, d_stencil_new, w );
+               apply_diagonal_scaling_new( x, y, z, d_stencil, w );
 
                // apply_backward_substitution( x, y, z, l_stencil, w );
-               apply_backward_substitution_new( x, y, z, l_stencil_new, w );
+               apply_backward_substitution_new( x, y, z, l_stencil, w );
                add_correction( x, y, z, w, u );
             }
             LIKWID_MARKER_STOP( "backward:inner:new" );
+            /*
             poly_stencil_lower.setStartX(
                 h * real_c( std::min( boundarySize, N_edge - 2 - boundarySize - z - y ) + 1 ), -h, l_stencil );
             poly_stencil_diagonal.setStartX(
                 h * real_c( std::min( boundarySize, N_edge - 2 - boundarySize - z - y ) + 1 ), -h, d_stencil );
+            */
 
             // x east:
             for ( uint_t x = std::min( boundarySize, N_edge - 2 - boundarySize - z - y ); x >= 1; x -= 1 )
@@ -1973,8 +1984,8 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
                poly_stencil_lower.incrementEval( l_stencil );
                poly_stencil_diagonal.incrementEval( d_stencil );
                apply_boundary_corrections_on_backward_stencil( x, y, z, N_edge, l_stencil );
-               apply_diagonal_scaling( x, y, z, d_stencil, w );
-               apply_backward_substitution( x, y, z, l_stencil, w );
+               apply_diagonal_scaling_new( x, y, z, d_stencil, w );
+               apply_backward_substitution_new( x, y, z, l_stencil, w );
                add_correction( x, y, z, w, u );
             }
          }
@@ -1985,14 +1996,14 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
             poly_stencil_lower.setY( h * real_c( y ) );
             poly_stencil_lower.setStartX( h * real_c( N_edge - 2 - z - y + 1 ), -h, l_stencil );
             poly_stencil_diagonal.setY( h * real_c( y ) );
-            poly_stencil_diagonal.setStartX( h * real_c( N_edge - 2 - z - y + 1 ), -h, l_stencil );
+            poly_stencil_diagonal.setStartX( h * real_c( N_edge - 2 - z - y + 1 ), -h, d_stencil );
             for ( uint_t x = N_edge - 2 - z - y; x >= 1; x -= 1 )
             {
                poly_stencil_lower.incrementEval( l_stencil );
                poly_stencil_diagonal.incrementEval( d_stencil );
                apply_boundary_corrections_on_backward_stencil( x, y, z, N_edge, l_stencil );
-               apply_diagonal_scaling( x, y, z, d_stencil, w );
-               apply_backward_substitution( x, y, z, l_stencil, w );
+               apply_diagonal_scaling_new( x, y, z, d_stencil, w );
+               apply_backward_substitution_new( x, y, z, l_stencil, w );
                add_correction( x, y, z, w, u );
             }
          }
@@ -2007,14 +2018,14 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
             poly_stencil_lower.setY( h * real_c( y ) );
             poly_stencil_lower.setStartX( h * real_c( N_edge - 2 - z - y + 1 ), -h, l_stencil );
             poly_stencil_diagonal.setY( h * real_c( y ) );
-            poly_stencil_diagonal.setStartX( h * real_c( N_edge - 2 - z - y + 1 ), -h, l_stencil );
+            poly_stencil_diagonal.setStartX( h * real_c( N_edge - 2 - z - y + 1 ), -h, d_stencil );
             for ( uint_t x = N_edge - 2 - z - y; x >= 1; x -= 1 )
             {
                poly_stencil_lower.incrementEval( l_stencil );
                poly_stencil_diagonal.incrementEval( d_stencil );
                apply_boundary_corrections_on_backward_stencil( x, y, z, N_edge, l_stencil );
-               apply_diagonal_scaling( x, y, z, d_stencil, w );
-               apply_backward_substitution( x, y, z, l_stencil, w );
+               apply_diagonal_scaling_new( x, y, z, d_stencil, w );
+               apply_backward_substitution_new( x, y, z, l_stencil, w );
                add_correction( x, y, z, w, u );
             }
          }
