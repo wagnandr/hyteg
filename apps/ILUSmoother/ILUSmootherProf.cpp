@@ -49,7 +49,6 @@ int main( int argc, char** argv )
    walberla::Environment env( argc, argv );
    walberla::mpi::MPIManager::instance()->useWorldComm();
 
-
    auto cfg = std::make_shared< walberla::config::Config >();
    if ( env.config() == nullptr )
    {
@@ -66,11 +65,12 @@ int main( int argc, char** argv )
 
    const std::string smoother_type = parameters.getParameter< std::string >( "smoother_type" );
 
-   hyteg::MeshInfo meshInfo = hyteg::MeshInfo::meshCuboid(hyteg::Point3D({0, 0, 0}), hyteg::Point3D({1, 1, 1}), 1, 1, 1);
+   hyteg::MeshInfo meshInfo =
+       hyteg::MeshInfo::meshCuboid( hyteg::Point3D( { 0, 0, 0 } ), hyteg::Point3D( { 1, 1, 1 } ), 1, 1, 1 );
    auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
        meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
    setupStorage->setMeshBoundaryFlagsOnBoundary( 1, 0, true );
-   const auto storage      = std::make_shared< PrimitiveStorage >( *setupStorage );
+   const auto storage = std::make_shared< PrimitiveStorage >( *setupStorage );
 
    using FormType     = forms::p1_div_k_grad_blending_q3;
    using OperatorType = P1ElementwiseBlendingDivKGradOperator;
@@ -81,18 +81,14 @@ int main( int argc, char** argv )
    FormType form( kappa3d, kappa2d );
    FormType form_const( []( auto ) { return 1.; }, []( auto ) { return 1.; } );
 
-   hyteg::P1Function< real_t > src( "src", storage, level, level );
-   hyteg::P1Function< real_t > dst( "dst", storage, level, level );
-
+   hyteg::P1Function< real_t > src1( "src1", storage, level, level );
    hyteg::P1Function< real_t > src2( "src2", storage, level, level );
-   hyteg::P1Function< real_t > dst2( "dst2", storage, level, level );
+   src1.interpolate([](const Point3D & p){ return p[0] + -0.5* p[1] + 2 * p[2]; }, level, All);
+   src2.interpolate([](const Point3D & p){ return p[0] + -0.5* p[1] + 2 * p[2]; }, level, All);
+   hyteg::P1Function< real_t > dst( "dst", storage, level, level );
+   dst.interpolate(0, level, All);
 
-   hyteg::P1Function< real_t > src3( "src3", storage, level, level );
-   hyteg::P1Function< real_t > dst3( "dst3", storage, level, level );
-
-   hyteg::P1Function< real_t > tmp1( "tmp", storage, level, level );
-   hyteg::P1Function< real_t > tmp2( "tmp", storage, level, level );
-   hyteg::P1Function< real_t > tmp3( "tmp", storage, level, level );
+   hyteg::P1Function< real_t > tmp( "tmp", storage, level, level );
 
    std::vector< double > c = {
        8.34871,      32.8748,      -219.823,     678.573,      -1063.37,     819.794,      -246.686,     -0.467978,
@@ -423,34 +419,42 @@ int main( int argc, char** argv )
       for ( uint_t idx = 0; idx < bnw.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_BNW ).setCoefficient( idx, bnw[idx] );
 
-      for ( auto cit : storage->getCells() )
+      for ( uint_t i = 0; i < 1; i += 1 )
       {
-         Cell& cell = *cit.second;
-
-         ldlt::p1::dim3::ConstantStencil opStencilProvider( level, cell, form );
-         // ldlt::p1::dim3::AssembledStencil< FormType > opStencilProvider (level, cell, form);
-
-         ldlt::p1::dim3::LDLTBoundaryStencils boundary;
-
-         for ( uint_t i = 0; i < 1; i += 1 )
+         for ( auto cit : storage->getCells() )
          {
+            Cell& cell = *cit.second;
+
+            ldlt::p1::dim3::ConstantStencil      opStencilProvider( level, cell, form );
+            ldlt::p1::dim3::LDLTBoundaryStencils boundary;
+
             ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step< hyteg::P1Function< real_t >,
                                                                      ldlt::p1::dim3::ConstantStencil< FormType >,
                                                                      true,
                                                                      false >(
-                opStencilProvider, ldltPolynomials, boundary, level, cell, src, tmp1, dst );
+                opStencilProvider, ldltPolynomials, boundary, level, cell, src1, tmp, dst );
+
+            if ( cell.getData( src1.getCellDataID() )->getPointer( level )[0] > 10000 )
+               WALBERLA_LOG_INFO_ON_ROOT( "op3 " << src1.getMaxMagnitude( level, All, true ) );
+         }
+
+         for ( auto cit : storage->getCells() )
+         {
+            Cell& cell = *cit.second;
+
+            ldlt::p1::dim3::ConstantStencilNew opStencilProviderNew( level, cell, form, ldlt::p1::dim3::allDirections );
 
             ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< hyteg::P1Function< real_t >,
-                ldlt::p1::dim3::ConstantStencil< FormType >,
-                true,
-                false >(
-                opStencilProvider, ldltPolynomials, boundary, level, cell, src, tmp1, dst );
+                                                                         ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
 
-            if ( cell.getData( dst.getCellDataID() )->getPointer( level )[0] > 10000 )
-               WALBERLA_LOG_INFO_ON_ROOT( "op3 " << dst.getMaxMagnitude( level, All, true ) );
-
+            if ( cell.getData( src2.getCellDataID() )->getPointer( level )[0] > 10000 )
+               WALBERLA_LOG_INFO_ON_ROOT( "op3 " << src2.getMaxMagnitude( level, All, true ) );
          }
       }
+
+      tmp.assign({1, -1}, {src1, src2}, level, Inner);
+      WALBERLA_LOG_INFO_ON_ROOT("dot " << tmp.dotGlobal(tmp, level, Inner));
    }
    LIKWID_MARKER_CLOSE;
 }
