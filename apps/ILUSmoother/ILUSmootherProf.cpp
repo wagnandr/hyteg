@@ -44,10 +44,11 @@ using namespace hyteg;
 
 int main( int argc, char** argv )
 {
-   // likwid_pinProcess(0);
+   LIKWID_MARKER_INIT;
 
    walberla::Environment env( argc, argv );
    walberla::mpi::MPIManager::instance()->useWorldComm();
+
 
    auto cfg = std::make_shared< walberla::config::Config >();
    if ( env.config() == nullptr )
@@ -65,7 +66,10 @@ int main( int argc, char** argv )
 
    const std::string smoother_type = parameters.getParameter< std::string >( "smoother_type" );
 
-   const auto setupStorage = createDomain( parameters );
+   hyteg::MeshInfo meshInfo = hyteg::MeshInfo::meshCuboid(hyteg::Point3D({0, 0, 0}), hyteg::Point3D({1, 1, 1}), 1, 1, 1);
+   auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
+       meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
+   setupStorage->setMeshBoundaryFlagsOnBoundary( 1, 0, true );
    const auto storage      = std::make_shared< PrimitiveStorage >( *setupStorage );
 
    using FormType     = forms::p1_div_k_grad_blending_q3;
@@ -89,68 +93,6 @@ int main( int argc, char** argv )
    hyteg::P1Function< real_t > tmp1( "tmp", storage, level, level );
    hyteg::P1Function< real_t > tmp2( "tmp", storage, level, level );
    hyteg::P1Function< real_t > tmp3( "tmp", storage, level, level );
-
-   /*
-   // cell ilu
-   if ( smoother_type == "inplace_ldlt" )
-   {
-      auto cell_smoother = std::make_shared< hyteg::P1LDLTInplaceCellSmoother< OperatorType, FormType > >(
-          op.getStorage(), op.getMinLevel(), op.getMaxLevel(), form );
-      cell_smoother->init();
-
-      for ( auto& cit : storage->getCells() )
-      {
-         cell_smoother->smooth( op, level, *cit.second, src, dst );
-         WALBERLA_LOG_INFO_ON_ROOT( "op" );
-      }
-   }
-   else if ( smoother_type == "surrogate_ldlt" )
-   {
-      const uint_t opDegreeX     = parameters.getParameter< uint_t >( "op_surrogate_degree_x" );
-      const uint_t opDegreeY     = parameters.getParameter< uint_t >( "op_surrogate_degree_y" );
-      const uint_t opDegreeZ     = parameters.getParameter< uint_t >( "op_surrogate_degree_z" );
-      const uint_t assemblyLevel = parameters.getParameter< uint_t >( "op_surrogate_assembly_level" );
-      const bool   symmetry      = parameters.getParameter< bool >( "op_surrogate_use_symmetry" );
-
-      const std::array< uint_t, 3 > opDegrees = { opDegreeX, opDegreeY, opDegreeZ };
-
-      const uint_t iluDegreeX = parameters.getParameter< uint_t >( "ilu_surrogate_degree_x" );
-      const uint_t iluDegreeY = parameters.getParameter< uint_t >( "ilu_surrogate_degree_y" );
-      const uint_t iluDegreeZ = parameters.getParameter< uint_t >( "ilu_surrogate_degree_z" );
-      const uint_t skipLevel  = parameters.getParameter< uint_t >( "ilu_surrogate_skip_level" );
-
-      const std::array< uint_t, 3 > iluDegrees = { iluDegreeX, iluDegreeY, iluDegreeZ };
-
-      auto cell_smoother = std::make_shared< hyteg::P1LDLTSurrogateCellSmoother< OperatorType, FormType, true > >(
-          op.getStorage(), op.getMinLevel(), op.getMaxLevel(), opDegrees, iluDegrees, symmetry, form );
-      cell_smoother->init( assemblyLevel, skipLevel );
-
-      LIKWID_MARKER_INIT;
-      LIKWID_MARKER_REGISTER( "smooth" );
-
-      for ( uint_t i = 0; i < 10; i += 1 )
-      {
-         for ( auto& cit : storage->getCells() )
-         {
-            LIKWID_MARKER_START( "smooth" );
-            cell_smoother->smooth( op, level, *cit.second, src, dst );
-            LIKWID_MARKER_STOP( "smooth" );
-
-            LIKWID_MARKER_START( "smooth" );
-            cell_smoother->smooth( op, level, *cit.second, src2, dst2 );
-            LIKWID_MARKER_STOP( "smooth" );
-
-            LIKWID_MARKER_START( "smooth" );
-            cell_smoother->smooth( op, level, *cit.second, src3, dst3 );
-            LIKWID_MARKER_STOP( "smooth" );
-
-            WALBERLA_LOG_INFO_ON_ROOT( "op" );
-         }
-      }
-
-      LIKWID_MARKER_CLOSE;
-   }
-    */
 
    std::vector< double > c = {
        8.34871,      32.8748,      -219.823,     678.573,      -1063.37,     819.794,      -246.686,     -0.467978,
@@ -454,93 +396,61 @@ int main( int argc, char** argv )
        -728.71,   -20813.8,   -82607.2,   -262217,   -319305,     -256686,    -11.9389,    -6632.6,     13892.4,   -11112.1,
        -144389,   -172213,    -130667 };
 
-   WALBERLA_LOG_INFO_ON_ROOT("now");
    {
       ldlt::p1::dim3::LDLTPolynomials ldltPolynomials( { 6, 6, 6 }, ldlt::p1::dim3::lowerDirectionsAndCenter );
 
-      WALBERLA_LOG_INFO_ON_ROOT("c");
       for ( uint_t idx = 0; idx < c.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_C ).setCoefficient( idx, c[idx] );
 
-      WALBERLA_LOG_INFO_ON_ROOT("s");
       for ( uint_t idx = 0; idx < s.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_S ).setCoefficient( idx, s[idx] );
 
-      WALBERLA_LOG_INFO_ON_ROOT("se");
       for ( uint_t idx = 0; idx < se.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_SE ).setCoefficient( idx, se[idx] );
 
-      WALBERLA_LOG_INFO_ON_ROOT("w");
       for ( uint_t idx = 0; idx < w.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_W ).setCoefficient( idx, w[idx] );
 
-      WALBERLA_LOG_INFO_ON_ROOT("bc");
       for ( uint_t idx = 0; idx < bc.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_BC ).setCoefficient( idx, bc[idx] );
 
-      WALBERLA_LOG_INFO_ON_ROOT("be");
       for ( uint_t idx = 0; idx < be.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_BE ).setCoefficient( idx, be[idx] );
 
-      WALBERLA_LOG_INFO_ON_ROOT("bn");
       for ( uint_t idx = 0; idx < bn.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_BN ).setCoefficient( idx, bn[idx] );
 
-      WALBERLA_LOG_INFO_ON_ROOT("bnw");
       for ( uint_t idx = 0; idx < bnw.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_BNW ).setCoefficient( idx, bnw[idx] );
 
-      WALBERLA_LOG_INFO_ON_ROOT("bi");
-      LIKWID_MARKER_INIT;
-      WALBERLA_LOG_INFO_ON_ROOT("bs");
-      // LIKWID_MARKER_REGISTER( "smooth1" );
-      // LIKWID_MARKER_REGISTER( "smooth2" );
-      // LIKWID_MARKER_REGISTER( "smooth3" );
-      // LIKWID_MARKER_REGISTER( "forward_inner" );
-      // LIKWID_MARKER_REGISTER( "backward_inner" );
-      WALBERLA_LOG_INFO_ON_ROOT("as");
       for ( auto cit : storage->getCells() )
       {
          Cell& cell = *cit.second;
 
-         WALBERLA_LOG_INFO_ON_ROOT("cs");
          ldlt::p1::dim3::ConstantStencil opStencilProvider( level, cell, form );
          // ldlt::p1::dim3::AssembledStencil< FormType > opStencilProvider (level, cell, form);
 
-         WALBERLA_LOG_INFO_ON_ROOT("b");
          ldlt::p1::dim3::LDLTBoundaryStencils boundary;
 
-         WALBERLA_LOG_INFO_ON_ROOT("bl");
          for ( uint_t i = 0; i < 1; i += 1 )
          {
-            WALBERLA_LOG_INFO_ON_ROOT( "sm1" );
-            LIKWID_MARKER_START( "smooth1" );
             ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step< hyteg::P1Function< real_t >,
                                                                      ldlt::p1::dim3::ConstantStencil< FormType >,
                                                                      true,
                                                                      false >(
                 opStencilProvider, ldltPolynomials, boundary, level, cell, src, tmp1, dst );
-            LIKWID_MARKER_STOP( "smooth1" );
 
-            WALBERLA_LOG_INFO_ON_ROOT( "sm2" );
-            LIKWID_MARKER_START( "smooth2" );
-            ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step< hyteg::P1Function< real_t >,
-                                                                     ldlt::p1::dim3::ConstantStencil< FormType >,
-                                                                     true,
-                                                                     false >(
-                opStencilProvider, ldltPolynomials, boundary, level, cell, src2, tmp2, dst2 );
-            LIKWID_MARKER_STOP( "smooth2" );
+            ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< hyteg::P1Function< real_t >,
+                ldlt::p1::dim3::ConstantStencil< FormType >,
+                true,
+                false >(
+                opStencilProvider, ldltPolynomials, boundary, level, cell, src, tmp1, dst );
 
-            WALBERLA_LOG_INFO_ON_ROOT( "sm3" );
-            LIKWID_MARKER_START( "smooth3" );
-            ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step< hyteg::P1Function< real_t >,
-                                                                     ldlt::p1::dim3::ConstantStencil< FormType >,
-                                                                     true,
-                                                                     false >(
-                opStencilProvider, ldltPolynomials, boundary, level, cell, src3, tmp3, dst3 );
-            LIKWID_MARKER_STOP( "smooth3" );
+            if ( cell.getData( dst.getCellDataID() )->getPointer( level )[0] > 10000 )
+               WALBERLA_LOG_INFO_ON_ROOT( "op3 " << dst.getMaxMagnitude( level, All, true ) );
+
          }
       }
-      LIKWID_MARKER_CLOSE;
    }
+   LIKWID_MARKER_CLOSE;
 }
