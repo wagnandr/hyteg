@@ -52,7 +52,7 @@ int main( int argc, char** argv )
    auto cfg = std::make_shared< walberla::config::Config >();
    if ( env.config() == nullptr )
    {
-      cfg->readParameterFile( "./ILUSmoother3D.prm" );
+      cfg->readParameterFile( "./ILUSmootherProfiling.prm" );
    }
    else
    {
@@ -61,17 +61,21 @@ int main( int argc, char** argv )
    walberla::Config::BlockHandle parameters = cfg->getOneBlock( "Parameters" );
    parameters.listParameters();
 
-   const uint_t level = 8;
-
-   const std::string smoother_type = parameters.getParameter< std::string >( "smoother_type" );
+   const uint_t level                = parameters.getParameter< uint_t >( "level" );
+   const uint_t numberOfIterations   = parameters.getParameter< uint_t >( "number_of_iterations" );
+   const bool   useOldImplementation = parameters.getParameter< bool >( "use_old_implementation" );
+   const uint_t numSubdivision       = parameters.getParameter< uint_t >( "number_of_subdivisions" );
 
    hyteg::MeshInfo meshInfo =
-       hyteg::MeshInfo::meshCuboid( hyteg::Point3D( { 0, 0, 0 } ), hyteg::Point3D( { 1, 1, 1 } ), 1, 1, 1 );
+       hyteg::MeshInfo::meshCuboid( hyteg::Point3D( { 0, 0, 0 } ), hyteg::Point3D( { 1, 1, 1 } ), 2, 2, 2 );
    auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
        meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
-   WALBERLA_LOG_INFO_ON_ROOT("num processors " << walberla::mpi::MPIManager::instance()->numProcesses());
+   WALBERLA_LOG_INFO_ON_ROOT( "num processors " << walberla::mpi::MPIManager::instance()->numProcesses() );
    setupStorage->setMeshBoundaryFlagsOnBoundary( 1, 0, true );
    const auto storage = std::make_shared< PrimitiveStorage >( *setupStorage );
+
+   WALBERLA_LOG_INFO( "num cells (global)" << storage->getNumberOfGlobalCells() );
+   WALBERLA_LOG_INFO( "num cells (local)" << storage->getNumberOfLocalCells() );
 
    using FormType     = forms::p1_div_k_grad_blending_q3;
    using OperatorType = P1ElementwiseBlendingDivKGradOperator;
@@ -84,10 +88,10 @@ int main( int argc, char** argv )
 
    hyteg::P1Function< real_t > src1( "src1", storage, level, level );
    hyteg::P1Function< real_t > src2( "src2", storage, level, level );
-   src1.interpolate([](const Point3D & p){ return p[0] + -0.5* p[1] + 2 * p[2]; }, level, All);
-   src2.interpolate([](const Point3D & p){ return p[0] + -0.5* p[1] + 2 * p[2]; }, level, All);
+   src1.interpolate( []( const Point3D& p ) { return p[0] + -0.5 * p[1] + 2 * p[2]; }, level, All );
+   src2.interpolate( []( const Point3D& p ) { return p[0] + -0.5 * p[1] + 2 * p[2]; }, level, All );
    hyteg::P1Function< real_t > dst( "dst", storage, level, level );
-   dst.interpolate(0, level, All);
+   dst.interpolate( 0, level, All );
 
    hyteg::P1Function< real_t > tmp( "tmp", storage, level, level );
 
@@ -420,23 +424,26 @@ int main( int argc, char** argv )
       for ( uint_t idx = 0; idx < bnw.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_BNW ).setCoefficient( idx, bnw[idx] );
 
-      for ( uint_t i = 0; i < 1; i += 1 )
+      for ( uint_t i = 0; i < numberOfIterations; i += 1 )
       {
-         for ( auto cit : storage->getCells() )
+         if ( useOldImplementation )
          {
-            Cell& cell = *cit.second;
+            for ( auto cit : storage->getCells() )
+            {
+               Cell& cell = *cit.second;
 
-            ldlt::p1::dim3::ConstantStencil      opStencilProvider( level, cell, form );
-            ldlt::p1::dim3::LDLTBoundaryStencils boundary;
+               ldlt::p1::dim3::ConstantStencil      opStencilProvider( level, cell, form );
+               ldlt::p1::dim3::LDLTBoundaryStencils boundary;
 
-            ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step< hyteg::P1Function< real_t >,
-                                                                     ldlt::p1::dim3::ConstantStencil< FormType >,
-                                                                     true,
-                                                                     false >(
-                opStencilProvider, ldltPolynomials, boundary, level, cell, src1, tmp, dst );
+               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step< hyteg::P1Function< real_t >,
+                                                                        ldlt::p1::dim3::ConstantStencil< FormType >,
+                                                                        true,
+                                                                        false >(
+                   opStencilProvider, ldltPolynomials, boundary, level, cell, src1, tmp, dst );
 
-            if ( cell.getData( src1.getCellDataID() )->getPointer( level )[0] > 10000 )
-               WALBERLA_LOG_INFO_ON_ROOT( "op3 " << src1.getMaxMagnitude( level, All, true ) );
+               if ( cell.getData( src1.getCellDataID() )->getPointer( level )[0] > 1000000 )
+                  WALBERLA_LOG_INFO_ON_ROOT( "op3 " << src1.getMaxMagnitude( level, All, true ) );
+            }
          }
 
          for ( auto cit : storage->getCells() )
@@ -449,13 +456,17 @@ int main( int argc, char** argv )
                                                                          ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
                 opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
 
-            if ( cell.getData( src2.getCellDataID() )->getPointer( level )[0] > 10000 )
+            if ( cell.getData( src2.getCellDataID() )->getPointer( level )[0] > 1000000 )
                WALBERLA_LOG_INFO_ON_ROOT( "op3 " << src2.getMaxMagnitude( level, All, true ) );
          }
       }
 
-      tmp.assign({1, -1}, {src1, src2}, level, Inner);
-      WALBERLA_LOG_INFO_ON_ROOT("dot " << tmp.dotGlobal(tmp, level, Inner));
+      if ( useOldImplementation )
+      {
+         tmp.assign( { 1, -1 }, { src1, src2 }, level, Inner );
+         auto resultDot = tmp.dotGlobal( tmp, level, Inner );
+         WALBERLA_LOG_INFO_ON_ROOT( "dot " << resultDot );
+      }
    }
    LIKWID_MARKER_CLOSE;
 }

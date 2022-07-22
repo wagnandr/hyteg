@@ -301,14 +301,13 @@ void toy_matmul_1( uint_t level, const P1Function< real_t >& src_function, const
    {
       Cell& cell = *cit.second;
 
-      /*
       const auto cidx = [level]( uint_t x, uint_t y, uint_t z, SD dir ) {
          return vertexdof::macrocell::indexFromVertex( level, x, y, z, dir );
       };
-      */
 
       const auto N_edge = levelinfo::num_microvertices_per_edge( level );
 
+      /*
       const auto cidx = [N_edge]( uint_t x, uint_t y, uint_t z, SD dir ) {
          switch ( dir )
          {
@@ -346,6 +345,7 @@ void toy_matmul_1( uint_t level, const P1Function< real_t >& src_function, const
             return std::numeric_limits< uint_t >::max();
          }
       };
+       */
 
       // unpack u and b
       auto src = cell.getData( src_function.getCellDataID() )->getPointer( level );

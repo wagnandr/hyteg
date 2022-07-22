@@ -19,11 +19,15 @@ waLBerla_add_executable( NAME CompareSurrogateILUStencils
         DEPENDS hyteg core)
 
 waLBerla_add_executable( NAME ILUSmootherProf
-        FILES ILUSmootherProf.cpp
+        FILES ILUSmootherProfiling.cpp
         DEPENDS hyteg core)
 
 waLBerla_add_executable( NAME ILUSketchbook
         FILES ILUSketchbook.cpp
+        DEPENDS hyteg core)
+
+waLBerla_add_executable( NAME ILUSketchbook_bak
+        FILES ILUSketchbook_bak.cpp
         DEPENDS hyteg core)
 
 waLBerla_link_files_to_builddir( *.prm )
