@@ -66,8 +66,8 @@ int main( int argc, char** argv )
    const bool   useOldImplementation = parameters.getParameter< bool >( "use_old_implementation" );
    const uint_t numSubdivision       = parameters.getParameter< uint_t >( "number_of_subdivisions" );
 
-   hyteg::MeshInfo meshInfo =
-       hyteg::MeshInfo::meshCuboid( hyteg::Point3D( { 0, 0, 0 } ), hyteg::Point3D( { 1, 1, 1 } ), 2, 2, 2 );
+   hyteg::MeshInfo meshInfo = hyteg::MeshInfo::meshCuboid(
+       hyteg::Point3D( { 0, 0, 0 } ), hyteg::Point3D( { 1, 1, 1 } ), numSubdivision, numSubdivision, numSubdivision );
    auto setupStorage = std::make_shared< hyteg::SetupPrimitiveStorage >(
        meshInfo, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
    WALBERLA_LOG_INFO_ON_ROOT( "num processors " << walberla::mpi::MPIManager::instance()->numProcesses() );
@@ -398,7 +398,16 @@ int main( int argc, char** argv )
        -144389,   -172213,    -130667 };
 
    {
-      ldlt::p1::dim3::LDLTPolynomials ldltPolynomials( { 6, 6, 6 }, ldlt::p1::dim3::lowerDirectionsAndCenter );
+      ldlt::p1::dim3::LDLTPolynomials ldltPolynomials( { 0, 0, 0 }, ldlt::p1::dim3::lowerDirectionsAndCenter );
+
+      c = { 0. };
+      s = { 0. };
+      se = { 0. };
+      w = { 0. };
+      bc = { 0. };
+      be = { 0. };
+      bn = { 0. };
+      bnw = { 0. };
 
       for ( uint_t idx = 0; idx < c.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_C ).setCoefficient( idx, c[idx] );

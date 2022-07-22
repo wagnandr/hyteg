@@ -30,6 +30,10 @@ waLBerla_add_executable( NAME ILUSketchbook_bak
         FILES ILUSketchbook_bak.cpp
         DEPENDS hyteg core)
 
+waLBerla_add_executable( NAME ILUSmootherMatrixBasedProfiling
+        FILES ILUSmootherMatrixBasedProfiling.cpp
+        DEPENDS hyteg core)
+
 waLBerla_link_files_to_builddir( *.prm )
 waLBerla_link_files_to_builddir( *.py )
 waLBerla_link_files_to_builddir( *.m )

@@ -210,91 +210,6 @@ constexpr inline SD indexToDirection( uint_t idx )
       return SD::VERTEX_C;
 }
 
-void toy_matmul_0( uint_t level, const P1Function< real_t >& src_function, const P1Function< real_t >& dst_function )
-{
-   for ( auto& cit : src_function.getStorage()->getCells() )
-   {
-      Cell& cell = *cit.second;
-
-      /*
-      const auto cidx = [level]( uint_t x, uint_t y, uint_t z, SD dir ) {
-         return vertexdof::macrocell::indexFromVertex( level, x, y, z, dir );
-      };
-      */
-
-      const auto N_edge = levelinfo::num_microvertices_per_edge( level );
-
-      const auto cidx = [N_edge]( uint_t x, uint_t y, uint_t z, SD dir ) {
-         switch ( dir )
-         {
-         case SD::VERTEX_C:
-            return indexing::macroCellIndex( N_edge, x, y, z );
-         case SD::VERTEX_W:
-            return indexing::macroCellIndex( N_edge, x - 1, y, z );
-         case SD::VERTEX_E:
-            return indexing::macroCellIndex( N_edge, x + 1, y, z );
-         case SD::VERTEX_N:
-            return indexing::macroCellIndex( N_edge, x, y + 1, z );
-         case SD::VERTEX_S:
-            return indexing::macroCellIndex( N_edge, x, y - 1, z );
-         case SD::VERTEX_NW:
-            return indexing::macroCellIndex( N_edge, x - 1, y + 1, z );
-         case SD::VERTEX_SE:
-            return indexing::macroCellIndex( N_edge, x + 1, y - 1, z );
-         case SD::VERTEX_TC:
-            return indexing::macroCellIndex( N_edge, x, y, z + 1 );
-         case SD::VERTEX_TW:
-            return indexing::macroCellIndex( N_edge, x - 1, y, z + 1 );
-         case SD::VERTEX_TS:
-            return indexing::macroCellIndex( N_edge, x, y - 1, z + 1 );
-         case SD::VERTEX_TSE:
-            return indexing::macroCellIndex( N_edge, x + 1, y - 1, z + 1 );
-         case SD::VERTEX_BC:
-            return indexing::macroCellIndex( N_edge, x, y, z - 1 );
-         case SD::VERTEX_BN:
-            return indexing::macroCellIndex( N_edge, x, y + 1, z - 1 );
-         case SD::VERTEX_BE:
-            return indexing::macroCellIndex( N_edge, x + 1, y, z - 1 );
-         case SD::VERTEX_BNW:
-            return indexing::macroCellIndex( N_edge, x - 1, y + 1, z - 1 );
-         default:
-            return std::numeric_limits< uint_t >::max();
-         }
-      };
-
-      // unpack u and b
-      auto src = cell.getData( src_function.getCellDataID() )->getPointer( level );
-      auto dst = cell.getData( dst_function.getCellDataID() )->getPointer( level );
-
-      using FormType = forms::p1_div_k_grad_blending_q3;
-      FormType form( []( auto ) { return 1.; }, []( auto ) { return 1.; } );
-      form.setGeometryMap( cell.getGeometryMap() );
-
-      std::map< SD, real_t > stencil_map =
-          P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { 0, 0, 0 }, cell, level, form );
-      std::array< real_t, 15 > stencil{ 0 };
-
-      for ( uint_t d = 0; d < 15; d += 1 )
-         stencil[d] = stencil_map[allDirections[d]];
-
-      LIKWID_MARKER_START("matmul0");
-      for ( uint_t z = 1; z <= N_edge - 2; z += 1 )
-      {
-         for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
-         {
-            for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
-            {
-               // std::map< SD, real_t > stencil = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { x, y, z }, cell, level, form );
-               dst[cidx( x, y, z, SD::VERTEX_C )] = 0;
-               for ( uint_t d = 0; d < allDirections.size(); d += 1 )
-                  dst[cidx( x, y, z, SD::VERTEX_C )] += stencil[d] * src[cidx( x, y, z, allDirections[d] )];
-            }
-         }
-      }
-      LIKWID_MARKER_STOP("matmul0");
-   }
-}
-
 void toy_matmul_1( uint_t level, const P1Function< real_t >& src_function, const P1Function< real_t >& dst_function )
 {
    for ( auto& cit : src_function.getStorage()->getCells() )
@@ -306,46 +221,6 @@ void toy_matmul_1( uint_t level, const P1Function< real_t >& src_function, const
       };
 
       const auto N_edge = levelinfo::num_microvertices_per_edge( level );
-
-      /*
-      const auto cidx = [N_edge]( uint_t x, uint_t y, uint_t z, SD dir ) {
-         switch ( dir )
-         {
-         case SD::VERTEX_C:
-            return indexing::macroCellIndex( N_edge, x, y, z );
-         case SD::VERTEX_W:
-            return indexing::macroCellIndex( N_edge, x - 1, y, z );
-         case SD::VERTEX_E:
-            return indexing::macroCellIndex( N_edge, x + 1, y, z );
-         case SD::VERTEX_N:
-            return indexing::macroCellIndex( N_edge, x, y + 1, z );
-         case SD::VERTEX_S:
-            return indexing::macroCellIndex( N_edge, x, y - 1, z );
-         case SD::VERTEX_NW:
-            return indexing::macroCellIndex( N_edge, x - 1, y + 1, z );
-         case SD::VERTEX_SE:
-            return indexing::macroCellIndex( N_edge, x + 1, y - 1, z );
-         case SD::VERTEX_TC:
-            return indexing::macroCellIndex( N_edge, x, y, z + 1 );
-         case SD::VERTEX_TW:
-            return indexing::macroCellIndex( N_edge, x - 1, y, z + 1 );
-         case SD::VERTEX_TS:
-            return indexing::macroCellIndex( N_edge, x, y - 1, z + 1 );
-         case SD::VERTEX_TSE:
-            return indexing::macroCellIndex( N_edge, x + 1, y - 1, z + 1 );
-         case SD::VERTEX_BC:
-            return indexing::macroCellIndex( N_edge, x, y, z - 1 );
-         case SD::VERTEX_BN:
-            return indexing::macroCellIndex( N_edge, x, y + 1, z - 1 );
-         case SD::VERTEX_BE:
-            return indexing::macroCellIndex( N_edge, x + 1, y, z - 1 );
-         case SD::VERTEX_BNW:
-            return indexing::macroCellIndex( N_edge, x - 1, y + 1, z - 1 );
-         default:
-            return std::numeric_limits< uint_t >::max();
-         }
-      };
-       */
 
       // unpack u and b
       auto src = cell.getData( src_function.getCellDataID() )->getPointer( level );
@@ -373,68 +248,6 @@ void toy_matmul_1( uint_t level, const P1Function< real_t >& src_function, const
          }
       }
       LIKWID_MARKER_STOP( "matmul1" );
-   }
-}
-
-void toy_matmul_2( uint_t level, const P1Function< real_t >& src_function, const P1Function< real_t >& dst_function )
-{
-   const auto N_edge = levelinfo::num_microvertices_per_edge( level );
-
-   const auto idx = [level]( uint_t x, uint_t y, uint_t z ) { return vertexdof::macrocell::index( level, x, y, z ); };
-
-   for ( auto& cit : src_function.getStorage()->getCells() )
-   {
-      Cell& cell = *cit.second;
-
-      // unpack u and b
-      auto src = cell.getData( src_function.getCellDataID() )->getPointer( level );
-      auto dst = cell.getData( dst_function.getCellDataID() )->getPointer( level );
-
-      using FormType = forms::p1_div_k_grad_blending_q3;
-      FormType form( []( auto ) { return 1.; }, []( auto ) { return 1.; } );
-      form.setGeometryMap( cell.getGeometryMap() );
-
-      std::map< SD, real_t > stencil_map =
-          P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { 0, 0, 0 }, cell, level, form );
-      std::array< real_t, 15 > stencil{ 0 };
-
-      for ( uint_t d = 0; d < 15; d += 1 )
-         stencil[d] = stencil_map[allDirections[d]];
-
-      LIKWID_MARKER_START( "matmul2" );
-      for ( uint_t z = 1; z <= N_edge - 2; z += 1 )
-      {
-         for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
-         {
-            for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
-            {
-               // std::map< SD, real_t > stencil = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { x, y, z }, cell, level, form );
-
-               // dst[cidx( x, y, z, SD::VERTEX_C )] = 0;
-               // for ( uint_t d = 0; d < 15; d += 1 )
-               //    dst[cidx( x, y, z, SD::VERTEX_C )] += stencil[d] * src[cidx( x, y, z, allDirections[d] )];
-
-               real_t sum = 0;
-               sum += stencil[0] * src[idx( x, y, z )];
-               sum += stencil[1] * src[idx( x - 1, y, z )];
-               sum += stencil[2] * src[idx( x, y - 1, z )];
-               sum += stencil[3] * src[idx( x + 1, y - 1, z )];
-               sum += stencil[4] * src[idx( x - 1, y + 1, z + 1 )];
-               sum += stencil[5] * src[idx( x, y + 1, z + 1 )];
-               sum += stencil[6] * src[idx( x, y, z + 1 )];
-               sum += stencil[7] * src[idx( x - 1, y, z + 1 )];
-               sum += stencil[8] * src[idx( x + 1, y, z )];
-               sum += stencil[9] * src[idx( x, y + 1, z )];
-               sum += stencil[10] * src[idx( x - 1, y + 1, z )];
-               sum += stencil[11] * src[idx( x + 1, y - 1, z + 1 )];
-               sum += stencil[12] * src[idx( x, y - 1, z + 1 )];
-               sum += stencil[13] * src[idx( x, y, z + 1 )];
-               sum += stencil[14] * src[idx( x - 1, y, z + 1 )];
-               dst[idx( x, y, z )] = sum;
-            }
-         }
-      }
-      LIKWID_MARKER_STOP( "matmul2" );
    }
 }
 
@@ -481,10 +294,10 @@ void toy_matmul_3( uint_t level, const P1Function< real_t >& src_function, const
                sum += stencil[1] * src[idx( x - 1, y, z )];
                sum += stencil[2] * src[idx( x, y - 1, z )];
                sum += stencil[3] * src[idx( x + 1, y - 1, z )];
-               sum += stencil[4] * src[idx( x - 1, y + 1, z + 1 )];
-               sum += stencil[5] * src[idx( x, y + 1, z + 1 )];
-               sum += stencil[6] * src[idx( x, y, z + 1 )];
-               sum += stencil[7] * src[idx( x - 1, y, z + 1 )];
+               sum += stencil[4] * src[idx( x - 1, y + 1, z - 1 )];
+               sum += stencil[5] * src[idx( x, y + 1, z - 1 )];
+               sum += stencil[6] * src[idx( x, y, z - 1 )];
+               sum += stencil[7] * src[idx( x + 1, y, z - 1 )];
                sum += stencil[8] * src[idx( x + 1, y, z )];
                sum += stencil[9] * src[idx( x, y + 1, z )];
                sum += stencil[10] * src[idx( x - 1, y + 1, z )];
@@ -500,7 +313,7 @@ void toy_matmul_3( uint_t level, const P1Function< real_t >& src_function, const
    }
 }
 
-void toy_matmul_4( uint_t level, const P1Function< real_t >& src_function, const P1Function< real_t >& dst_function )
+void toy_matmul_8( uint_t level, const P1Function< real_t >& src_function, const P1Function< real_t >& dst_function )
 {
    for ( auto& cit : src_function.getStorage()->getCells() )
    {
@@ -518,70 +331,10 @@ void toy_matmul_4( uint_t level, const P1Function< real_t >& src_function, const
       FormType form( []( auto ) { return 1.; }, []( auto ) { return 1.; } );
       form.setGeometryMap( cell.getGeometryMap() );
 
-      std::map< SD, real_t > stencil_map =
+      std::map< SD, real_t > stencil=
           P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { 0, 0, 0 }, cell, level, form );
-      std::array< real_t, 15 > stencil{ 0 };
 
-      for ( uint_t d = 0; d < 15; d += 1 )
-         stencil[d] = stencil_map[allDirections[d]];
-
-      LIKWID_MARKER_START( "matmul4" );
-      for ( uint_t z = 1; z <= N_edge - 2; z += 1 )
-      {
-         for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
-         {
-            for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
-            {
-               double sum = 0;
-               sum += 0.0 * src[idx( x, y, z )];
-               sum += 1.0 * src[idx( x - 1, y, z )];
-               sum += 2.0 * src[idx( x, y - 1, z )];
-               sum += 3.0 * src[idx( x + 1, y - 1, z )];
-               sum += 4.0 * src[idx( x - 1, y + 1, z + 1 )];
-               sum += 5.0 * src[idx( x, y + 1, z + 1 )];
-               sum += 6.0 * src[idx( x, y, z + 1 )];
-               sum += 7.0 * src[idx( x - 1, y, z + 1 )];
-               sum += 8.0 * src[idx( x + 1, y, z )];
-               sum += 9.0 * src[idx( x, y + 1, z )];
-               sum += 10.0 * src[idx( x - 1, y + 1, z )];
-               sum += 11.0 * src[idx( x + 1, y - 1, z + 1 )];
-               sum += 12.0 * src[idx( x, y - 1, z + 1 )];
-               sum += 13.0 * src[idx( x, y, z + 1 )];
-               sum += 14.0 * src[idx( x - 1, y, z + 1 )];
-               dst[idx( x, y, z )] = sum;
-            }
-         }
-      }
-      LIKWID_MARKER_STOP( "matmul4" );
-   }
-}
-
-void toy_matmul_5( uint_t level, const P1Function< real_t >& src_function, const P1Function< real_t >& dst_function )
-{
-   for ( auto& cit : src_function.getStorage()->getCells() )
-   {
-      Cell& cell = *cit.second;
-
-      const auto N_edge = levelinfo::num_microvertices_per_edge( level );
-
-      const auto idx = [N_edge]( uint_t x, uint_t y, uint_t z ) { return indexing::macroCellIndex( N_edge, x, y, z ); };
-
-      // unpack u and b
-      auto src = cell.getData( src_function.getCellDataID() )->getPointer( level );
-      auto dst = cell.getData( dst_function.getCellDataID() )->getPointer( level );
-
-      using FormType = forms::p1_div_k_grad_blending_q3;
-      FormType form( []( auto ) { return 1.; }, []( auto ) { return 1.; } );
-      form.setGeometryMap( cell.getGeometryMap() );
-
-      std::map< SD, real_t > stencil_map =
-          P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { 0, 0, 0 }, cell, level, form );
-      std::array< real_t, 15 > stencil{ 0 };
-
-      for ( uint_t d = 0; d < 15; d += 1 )
-         stencil[d] = stencil_map[allDirections[d]];
-
-      LIKWID_MARKER_START( "matmul5" );
+      LIKWID_MARKER_START( "matmul8" );
       for ( uint_t z = 1; z <= N_edge - 2; z += 1 )
       {
          for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
@@ -594,36 +347,31 @@ void toy_matmul_5( uint_t level, const P1Function< real_t >& src_function, const
                // for ( uint_t d = 0; d < 15; d += 1 )
                //    dst[cidx( x, y, z, SD::VERTEX_C )] += stencil[d] * src[cidx( x, y, z, allDirections[d] )];
 
-               std::array< real_t, 15 > src_array{ 0 };
-               src_array[0]  = src[idx( x, y, z )];
-               src_array[1]  = src[idx( x - 1, y, z )];
-               src_array[2]  = src[idx( x, y - 1, z )];
-               src_array[3]  = src[idx( x + 1, y - 1, z )];
-               src_array[4]  = src[idx( x - 1, y + 1, z + 1 )];
-               src_array[5]  = src[idx( x, y + 1, z + 1 )];
-               src_array[6]  = src[idx( x, y, z + 1 )];
-               src_array[7]  = src[idx( x - 1, y, z + 1 )];
-               src_array[8]  = src[idx( x + 1, y, z )];
-               src_array[9]  = src[idx( x, y + 1, z )];
-               src_array[10] = src[idx( x - 1, y + 1, z )];
-               src_array[11] = src[idx( x + 1, y - 1, z + 1 )];
-               src_array[12] = src[idx( x, y - 1, z + 1 )];
-               src_array[13] = src[idx( x, y, z + 1 )];
-               src_array[14] = src[idx( x - 1, y, z + 1 )];
-
                real_t sum = 0;
-               for ( uint_t d = 0; d < 15; d += 1 )
-                  sum += stencil[d] * src_array[d];
-
+               sum += stencil[SD::VERTEX_C] * src[idx( x, y, z )];
+               sum += stencil[SD::VERTEX_W] * src[idx( x - 1, y, z )];
+               sum += stencil[SD::VERTEX_S] * src[idx( x, y - 1, z )];
+               sum += stencil[SD::VERTEX_SE] * src[idx( x + 1, y - 1, z )];
+               sum += stencil[SD::VERTEX_BNW] * src[idx( x - 1, y + 1, z - 1 )];
+               sum += stencil[SD::VERTEX_BN] * src[idx( x, y + 1, z - 1 )];
+               sum += stencil[SD::VERTEX_BC] * src[idx( x, y, z - 1 )];
+               sum += stencil[SD::VERTEX_BE] * src[idx( x + 1, y, z - 1 )];
+               sum += stencil[SD::VERTEX_E] * src[idx( x + 1, y, z )];
+               sum += stencil[SD::VERTEX_N] * src[idx( x, y + 1, z )];
+               sum += stencil[SD::VERTEX_NW] * src[idx( x - 1, y + 1, z )];
+               sum += stencil[SD::VERTEX_TSE] * src[idx( x + 1, y - 1, z + 1 )];
+               sum += stencil[SD::VERTEX_TS] * src[idx( x, y - 1, z + 1 )];
+               sum += stencil[SD::VERTEX_TC] * src[idx( x, y, z + 1 )];
+               sum += stencil[SD::VERTEX_TW] * src[idx( x - 1, y, z + 1 )];
                dst[idx( x, y, z )] = sum;
             }
          }
       }
-      LIKWID_MARKER_STOP( "matmul5" );
+      LIKWID_MARKER_STOP( "matmul8" );
    }
 }
 
-void toy_matmul_6( uint_t level, const P1Function< real_t >& src_function, const P1Function< real_t >& dst_function )
+void toy_matmul_7( uint_t level, const P1Function< real_t >& src_function, const P1Function< real_t >& dst_function )
 {
    for ( auto& cit : src_function.getStorage()->getCells() )
    {
@@ -631,12 +379,7 @@ void toy_matmul_6( uint_t level, const P1Function< real_t >& src_function, const
 
       const auto N_edge = levelinfo::num_microvertices_per_edge( level );
 
-      //const auto cidx = [N_edge]( uint_t x, uint_t y, uint_t z, uint_t dir ) { return index( N_edge, x, y, z, dir ); };
-      const auto cidx = [N_edge]( uint_t x, uint_t y, uint_t z, SD dir ) { return index( N_edge, x, y, z, dir ); };
-
-      const auto sidx = []( SD dir ) { return stencilIndex( dir ); };
-
-      // const auto idx = [N_edge]( uint_t x, uint_t y, uint_t z ) { return indexing::macroCellIndex( N_edge, x, y, z ); };
+      const auto idx = [N_edge]( uint_t x, uint_t y, uint_t z ) { return indexing::macroCellIndex( N_edge, x, y, z ); };
 
       // unpack u and b
       auto src = cell.getData( src_function.getCellDataID() )->getPointer( level );
@@ -648,12 +391,12 @@ void toy_matmul_6( uint_t level, const P1Function< real_t >& src_function, const
 
       std::map< SD, real_t > stencil_map =
           P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { 0, 0, 0 }, cell, level, form );
-      std::array< real_t, 15 > stencil{ 0 };
 
-      for ( uint_t d = 0; d < 15; d += 1 )
-         stencil[d] = stencil_map[allDirections[d]];
+      std::unordered_map< SD, real_t > stencil{};
+      for (auto it : stencil_map)
+         stencil[it.first] = stencil_map[it.first];
 
-      LIKWID_MARKER_START( "matmul6" );
+      LIKWID_MARKER_START( "matmul7" );
       for ( uint_t z = 1; z <= N_edge - 2; z += 1 )
       {
          for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
@@ -662,50 +405,96 @@ void toy_matmul_6( uint_t level, const P1Function< real_t >& src_function, const
             {
                // std::map< SD, real_t > stencil = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { x, y, z }, cell, level, form );
 
+               // dst[cidx( x, y, z, SD::VERTEX_C )] = 0;
+               // for ( uint_t d = 0; d < 15; d += 1 )
+               //    dst[cidx( x, y, z, SD::VERTEX_C )] += stencil[d] * src[cidx( x, y, z, allDirections[d] )];
+
                real_t sum = 0;
-
-               /*
-               dst[cidx( x, y, z, SD::VERTEX_C )] = 0;
-               for ( uint_t d = 0; d < 15; d += 1 )
-                  dst[cidx( x, y, z, SD::VERTEX_C )] += stencil[d] * src[cidx( x, y, z, allDirections[d] )];
-               */
-
-               sum += stencil[sidx( SD::VERTEX_C )] * src[cidx( x, y, z, SD::VERTEX_C )];
-               sum += stencil[sidx( SD::VERTEX_W )] * src[cidx( x, y, z, SD::VERTEX_W )];
-               sum += stencil[sidx( SD::VERTEX_S )] * src[cidx( x, y, z, SD::VERTEX_S )];
-               sum += stencil[sidx( SD::VERTEX_SE )] * src[cidx( x, y, z, SD::VERTEX_SE )];
-               sum += stencil[sidx( SD::VERTEX_BNW )] * src[cidx( x, y, z, SD::VERTEX_BNW )];
-               sum += stencil[sidx( SD::VERTEX_BN )] * src[cidx( x, y, z, SD::VERTEX_BN )];
-               sum += stencil[sidx( SD::VERTEX_BC )] * src[cidx( x, y, z, SD::VERTEX_BC )];
-               sum += stencil[sidx( SD::VERTEX_BE )] * src[cidx( x, y, z, SD::VERTEX_BE )];
-               sum += stencil[sidx( SD::VERTEX_E )] * src[cidx( x, y, z, SD::VERTEX_E )];
-               sum += stencil[sidx( SD::VERTEX_N )] * src[cidx( x, y, z, SD::VERTEX_N )];
-               sum += stencil[sidx( SD::VERTEX_NW )] * src[cidx( x, y, z, SD::VERTEX_NW )];
-               sum += stencil[sidx( SD::VERTEX_TSE )] * src[cidx( x, y, z, SD::VERTEX_TSE )];
-               sum += stencil[sidx( SD::VERTEX_TS )] * src[cidx( x, y, z, SD::VERTEX_TS )];
-               sum += stencil[sidx( SD::VERTEX_TC )] * src[cidx( x, y, z, SD::VERTEX_TC )];
-               sum += stencil[sidx( SD::VERTEX_TW )] * src[cidx( x, y, z, SD::VERTEX_TW )];
-
-               /*
-               for (auto d: allDirections)
-                  sum += stencil[sidx( d )] * src[cidx( x, y, z, d )];
-               */
-
-               /*
-               for ( uint_t d = 0; d < 15; d += 1 )
-                  //   sum += stencil[d] * src[cidx( x, y, z, allDirections[d] )];
-                  sum += stencil[d] * src[cidx( x, y, z, d )];
-                  */
-
-               // real_t sum = 0;
-               // for (uint_t d = 0; d < stencil.size(); d += 1)
-               //     sum += stencil[d] * src[cidx( x, y, z, allDirections[d] )];
-
-               dst[index( N_edge, x, y, z, SD::VERTEX_C )] = sum;
+               sum += stencil[SD::VERTEX_C] * src[idx( x, y, z )];
+               sum += stencil[SD::VERTEX_W] * src[idx( x - 1, y, z )];
+               sum += stencil[SD::VERTEX_S] * src[idx( x, y - 1, z )];
+               sum += stencil[SD::VERTEX_SE] * src[idx( x + 1, y - 1, z )];
+               sum += stencil[SD::VERTEX_BNW] * src[idx( x - 1, y + 1, z - 1 )];
+               sum += stencil[SD::VERTEX_BN] * src[idx( x, y + 1, z - 1 )];
+               sum += stencil[SD::VERTEX_BC] * src[idx( x, y, z - 1 )];
+               sum += stencil[SD::VERTEX_BE] * src[idx( x + 1, y, z - 1 )];
+               sum += stencil[SD::VERTEX_E] * src[idx( x + 1, y, z )];
+               sum += stencil[SD::VERTEX_N] * src[idx( x, y + 1, z )];
+               sum += stencil[SD::VERTEX_NW] * src[idx( x - 1, y + 1, z )];
+               sum += stencil[SD::VERTEX_TSE] * src[idx( x + 1, y - 1, z + 1 )];
+               sum += stencil[SD::VERTEX_TS] * src[idx( x, y - 1, z + 1 )];
+               sum += stencil[SD::VERTEX_TC] * src[idx( x, y, z + 1 )];
+               sum += stencil[SD::VERTEX_TW] * src[idx( x - 1, y, z + 1 )];
+               dst[idx( x, y, z )] = sum;
             }
          }
       }
-      LIKWID_MARKER_STOP( "matmul6" );
+      LIKWID_MARKER_STOP( "matmul7" );
+   }
+}
+
+void toy_matmul_9( uint_t level, const P1Function< real_t >& src_function, const P1Function< real_t >& dst_function )
+{
+   for ( auto& cit : src_function.getStorage()->getCells() )
+   {
+      Cell& cell = *cit.second;
+
+      const auto N_edge = levelinfo::num_microvertices_per_edge( level );
+
+      const auto idx = [N_edge]( uint_t x, uint_t y, uint_t z ) { return indexing::macroCellIndex( N_edge, x, y, z ); };
+
+      // unpack u and b
+      auto src = cell.getData( src_function.getCellDataID() )->getPointer( level );
+      auto dst = cell.getData( dst_function.getCellDataID() )->getPointer( level );
+
+      using FormType = forms::p1_div_k_grad_blending_q3;
+      FormType form( []( auto ) { return 1.; }, []( auto ) { return 1.; } );
+      form.setGeometryMap( cell.getGeometryMap() );
+
+      std::map< SD, real_t > stencil_map =
+          P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { 0, 0, 0 }, cell, level, form );
+
+      auto hash = [](auto x) { return uint_c(x); };
+      std::unordered_map< SD, real_t, decltype( hash ) > stencil{ 67, hash };
+
+      for (auto it : stencil_map)
+         stencil[it.first] = stencil_map[it.first];
+
+      LIKWID_MARKER_START( "matmul9" );
+      for ( uint_t z = 1; z <= N_edge - 2; z += 1 )
+      {
+         for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
+         {
+            for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
+            {
+               // std::map< SD, real_t > stencil = P1Elements::P1Elements3D::calculateStencilInMacroCellForm_new( { x, y, z }, cell, level, form );
+
+               // dst[cidx( x, y, z, SD::VERTEX_C )] = 0;
+               // for ( uint_t d = 0; d < 15; d += 1 )
+               //    dst[cidx( x, y, z, SD::VERTEX_C )] += stencil[d] * src[cidx( x, y, z, allDirections[d] )];
+
+
+               real_t sum = 0;
+               sum += stencil[SD::VERTEX_C] * src[idx( x, y, z )];
+               sum += stencil[SD::VERTEX_W] * src[idx( x - 1, y, z )];
+               sum += stencil[SD::VERTEX_S] * src[idx( x, y - 1, z )];
+               sum += stencil[SD::VERTEX_SE] * src[idx( x + 1, y - 1, z )];
+               sum += stencil[SD::VERTEX_BNW] * src[idx( x - 1, y + 1, z - 1 )];
+               sum += stencil[SD::VERTEX_BN] * src[idx( x, y + 1, z - 1 )];
+               sum += stencil[SD::VERTEX_BC] * src[idx( x, y, z - 1 )];
+               sum += stencil[SD::VERTEX_BE] * src[idx( x + 1, y, z - 1 )];
+               sum += stencil[SD::VERTEX_E] * src[idx( x + 1, y, z )];
+               sum += stencil[SD::VERTEX_N] * src[idx( x, y + 1, z )];
+               sum += stencil[SD::VERTEX_NW] * src[idx( x - 1, y + 1, z )];
+               sum += stencil[SD::VERTEX_TSE] * src[idx( x + 1, y - 1, z + 1 )];
+               sum += stencil[SD::VERTEX_TS] * src[idx( x, y - 1, z + 1 )];
+               sum += stencil[SD::VERTEX_TC] * src[idx( x, y, z + 1 )];
+               sum += stencil[SD::VERTEX_TW] * src[idx( x - 1, y, z + 1 )];
+               dst[idx( x, y, z )] = sum;
+            }
+         }
+      }
+      LIKWID_MARKER_STOP( "matmul9" );
    }
 }
 
@@ -750,9 +539,23 @@ void runPerf(){
       for ( const auto& cit : storage->getCells())
       {
          auto& cell = *cit.second;
-         toy_matmul_6( level, src, dst );
+         toy_matmul_7( level, src, dst );
          if ( cell.getData( dst.getCellDataID() )->getPointer( level )[levelinfo::num_microvertices_per_cell( level ) / 2] > 100 )
             WALBERLA_LOG_INFO_ON_ROOT( "op6 " << dst.getMaxMagnitude( level, All, true ) );
+      }
+      for ( const auto& cit : storage->getCells())
+      {
+         auto& cell = *cit.second;
+         toy_matmul_8( level, src, dst );
+         if ( cell.getData( dst.getCellDataID() )->getPointer( level )[levelinfo::num_microvertices_per_cell( level ) / 2] > 100 )
+            WALBERLA_LOG_INFO_ON_ROOT( "op6 " << dst.getMaxMagnitude( level, All, true ) );
+      }
+      for ( const auto& cit : storage->getCells())
+      {
+         auto& cell = *cit.second;
+         toy_matmul_9( level, src, dst );
+         if ( cell.getData( dst.getCellDataID() )->getPointer( level )[levelinfo::num_microvertices_per_cell( level ) / 2] > 100 )
+         WALBERLA_LOG_INFO_ON_ROOT( "op6 " << dst.getMaxMagnitude( level, All, true ) );
       }
    }
 }

@@ -2,6 +2,6 @@ Parameters
 {
    level                  8;
    number_of_iterations   4;
-   use_old_implementation true;
+   use_old_implementation false;
    number_of_subdivisions 1;
 }
