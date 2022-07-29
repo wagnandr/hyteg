@@ -398,16 +398,16 @@ int main( int argc, char** argv )
        -144389,   -172213,    -130667 };
 
    {
-      ldlt::p1::dim3::LDLTPolynomials ldltPolynomials( { 0, 0, 0 }, ldlt::p1::dim3::lowerDirectionsAndCenter );
+      ldlt::p1::dim3::LDLTPolynomials ldltPolynomials( { 6, 6, 6 }, ldlt::p1::dim3::lowerDirectionsAndCenter );
 
-      c = { 0. };
-      s = { 0. };
-      se = { 0. };
-      w = { 0. };
-      bc = { 0. };
-      be = { 0. };
-      bn = { 0. };
-      bnw = { 0. };
+      // c = { 0. };
+      // s = { 0. };
+      // se = { 0. };
+      // w = { 0. };
+      // bc = { 0. };
+      // be = { 0. };
+      // bn = { 0. };
+      // bnw = { 0. };
 
       for ( uint_t idx = 0; idx < c.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_C ).setCoefficient( idx, c[idx] );

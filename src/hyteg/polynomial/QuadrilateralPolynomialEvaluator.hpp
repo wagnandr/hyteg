@@ -228,6 +228,8 @@ class QuadrilateralPolynomial3DEvaluator
 
    real_t incrementEval() { return evaluator2d_.incrementEval(); }
 
+   QuadrilateralPolynomial2DEvaluator& getEvaluator2D(){ return evaluator2d_; };
+
  private:
    QuadrilateralBasis2D basis2_;
 

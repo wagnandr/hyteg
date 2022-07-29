@@ -24,8 +24,8 @@
 namespace hyteg {
 
 namespace polynomialevaluator{
-  template<uint_t Degree>
-  inline real_t setStartX(real_t x, real_t h, const Polynomial1D<MonomialBasis1D>& poly1_, std::vector<real_t>& deltas) {
+  template<uint_t Degree, typename DeltaContainer>
+  inline real_t setStartX(real_t x, real_t h, const Polynomial1D<MonomialBasis1D>& poly1_, DeltaContainer& deltas) {
     static_assert(Degree <= 12, "Polynomial2DEvaluator not implemented for degree larger than 12");
     if (Degree == 0) {
       deltas[0] = poly1_.getCoefficient(0);
