@@ -8,7 +8,6 @@
 #include "hyteg/polynomial/QuadrilateralPolynomialEvaluator.hpp"
 
 #include "Eigen/Dense"
-
 #include "PrimitiveSmoothers.hpp"
 
 namespace hyteg {
@@ -193,9 +192,9 @@ void apply_boundary_corrections( uint_t x, uint_t y, uint_t z, uint_t N, std::ma
 
 void apply_boundary_corrections( uint_t x, uint_t y, uint_t z, uint_t N, std::array< real_t, 7 >& stencil )
 {
-   const real_t not_on_x = (x != 1);
-   const real_t not_on_y = (y != 1);
-   const real_t not_on_z = (z != 1);
+   const real_t not_on_x = ( x != 1 );
+   const real_t not_on_y = ( y != 1 );
+   const real_t not_on_z = ( z != 1 );
    stencil[0] *= not_on_x;
    stencil[1] *= not_on_y;
    stencil[2] *= not_on_y;
@@ -207,9 +206,9 @@ void apply_boundary_corrections( uint_t x, uint_t y, uint_t z, uint_t N, std::ar
 
 void apply_boundary_corrections( uint_t x, uint_t y, uint_t z, std::array< real_t, 7 >& stencil )
 {
-   const real_t not_on_x = (x != 1);
-   const real_t not_on_y = (y != 1);
-   const real_t not_on_z = (z != 1);
+   const real_t not_on_x = ( x != 1 );
+   const real_t not_on_y = ( y != 1 );
+   const real_t not_on_z = ( z != 1 );
    stencil[0] *= not_on_x;
    stencil[1] *= not_on_y;
    stencil[2] *= not_on_y;
@@ -740,7 +739,7 @@ class Interpolators
    std::map< SD, Interpolator3D > interpolators;
 };
 
-template < size_t num_directions >
+template < size_t num_directions, size_t degree = 0 >
 class PolyStencilNew
 {
  public:
@@ -748,7 +747,6 @@ class PolyStencilNew
    : degrees_( degrees )
    , directions_( directions )
    , deltas2_( num_directions, degrees[0] + 1 )
-   , deltas2_bak_( num_directions, degrees[0] + 1 )
    {
       for ( uint_t i = 0; i < num_directions; i += 1 )
       {
@@ -806,7 +804,7 @@ class PolyStencilNew
    {
       for ( uint_t i = 0; i < num_directions; i += 1 )
       {
-         stencil[i] = polynomialevaluator::setStartX< 6 >( x, h, polynomials_[i].getEvaluator2D().getPolynomial1D(), deltas_[i] );
+         stencil[i] = polynomialevaluator::setStartX< degree >( x, h, polynomials_[i].getEvaluator2D().getPolynomial1D(), deltas_[i] );
          for ( int j = 0; j < degrees_[0]+1; j += 1 )
             deltas2_(i,j) = deltas_[i][j];
       }
@@ -831,19 +829,24 @@ class PolyStencilNew
    {
       for ( uint_t i = 0; i < num_directions; i += 1 )
       {
-         stencil[i] = polynomialevaluator::setStartX< 6 >( x + offsetsX_[i], h, polynomials_[i].getEvaluator2D().getPolynomial1D(), deltas_[i] );
-         for ( int j = 0; j < degrees_[0]+1; j += 1 )
-            deltas2_(i,j) = deltas_[i][j];
+         stencil[i] = polynomialevaluator::setStartX< degree >(
+             x + offsetsX_[i], h, polynomials_[i].getEvaluator2D().getPolynomial1D(), deltas_[i] );
+         for ( int j = 0; j < degrees_[0] + 1; j += 1 )
+            deltas2_( i, j ) = deltas_[i][j];
       }
    }
 
    void incrementEval( std::array< real_t, num_directions >& stencil )
    {
-      for ( int j = 0; j < degrees_[0]; j += 1 )
+      for ( int j = 0; j < degree; j += 1 )
          deltas2_.col( j ) += deltas2_.col( j + 1 );
+
+      // for ( int j = 0; j < degrees_[0]; j += 1 )
+      //   deltas2_bak_[j] += deltas2_bak_[j + 1];
 
       for ( int i = 0; i < num_directions; i += 1 )
          stencil[i] = deltas2_( i, 0 );
+      // stencil[i] = deltas2_bak_[i][0];
    };
 
    void setOffset( SD d, real_t x, real_t y, real_t z )
@@ -866,8 +869,9 @@ class PolyStencilNew
 
    std::array< std::vector< real_t >, num_directions > deltas_;
 
-   Eigen::Matrix< real_t, num_directions, Eigen::Dynamic > deltas2_;
-   Eigen::Matrix< real_t, num_directions, Eigen::Dynamic > deltas2_bak_;
+   // Eigen::Matrix< real_t, num_directions, Eigen::Dynamic > deltas2_;
+   // Eigen::Matrix< real_t, num_directions, degree + 1 > deltas2_;
+   Eigen::Matrix< real_t, 8, 8 > deltas2_;
 
    std::vector< real_t > offsetsX_;
    std::vector< real_t > offsetsY_;
@@ -1068,7 +1072,7 @@ class ConstantStencilNew
 
    void setStartX( real_t, real_t, std::array< real_t, StencilSize >& stencil ) { assemble( stencil ); }
 
-   void incrementEval( std::array< real_t, StencilSize >& stencil ) { assemble( stencil ); };
+   void incrementEval( std::array< real_t, StencilSize >& stencil ){ /* assemble( stencil ); */ };
 
    void assemble( std::array< real_t, StencilSize >& stencil ) { stencil = stencil_; }
 
@@ -1607,7 +1611,15 @@ void apply_full_surrogate_ilu_smoothing_step_matrix( OpStencilProviderType&     
 {
    const auto N_edge = levelinfo::num_microvertices_per_edge( level );
 
-   const auto idx = [N_edge]( uint_t x, uint_t y, uint_t z ) { return indexing::macroCellIndex( N_edge, x, y, z ); };
+   const uint_t lmcs = indexing::layout::linearMacroCellSize( N_edge );
+
+   const auto idx = [N_edge, lmcs]( uint_t x, uint_t y, uint_t z ) {
+     const uint_t widthMinusSlice = N_edge - z;
+     const uint_t sliceOffset     = lmcs - ( ( widthMinusSlice + 2 ) * ( widthMinusSlice + 1 ) * widthMinusSlice ) / 6;
+     const uint_t rowOffset       = y * ( widthMinusSlice + 1 ) - ( ( ( y + 1 ) * ( y ) ) / 2 );
+     return sliceOffset + rowOffset + x;
+     // return indexing::macroCellIndex( N_edge, x, y, z );
+   };
 
    real_t h = 1. / real_c( levelinfo::num_microedges_per_edge( level ) );
 
@@ -1769,7 +1781,15 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
 {
    const auto N_edge = levelinfo::num_microvertices_per_edge( level );
 
-   const auto idx = [N_edge]( uint_t x, uint_t y, uint_t z ) { return indexing::macroCellIndex( N_edge, x, y, z ); };
+   const uint_t lmcs = indexing::layout::linearMacroCellSize( N_edge );
+
+   const auto idx = [N_edge, lmcs]( uint_t x, uint_t y, uint_t z ) {
+      const uint_t widthMinusSlice = N_edge - z;
+      const uint_t sliceOffset     = lmcs - ( ( widthMinusSlice + 2 ) * ( widthMinusSlice + 1 ) * widthMinusSlice ) / 6;
+      const uint_t rowOffset       = y * ( widthMinusSlice + 1 ) - ( ( ( y + 1 ) * ( y ) ) / 2 );
+      return sliceOffset + rowOffset + x;
+      // return indexing::macroCellIndex( N_edge, x, y, z );
+   };
 
    real_t h = 1. / real_c( levelinfo::num_microedges_per_edge( level ) );
 
@@ -1824,10 +1844,10 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
       w_dat[idx( x, y, z )] -= sum;
    };
 
+
    auto calc_residual =
        [idx](
-           uint_t x, uint_t y, uint_t z, const std::array< real_t, 15 >& a, real_t const* u_d, real_t const* b_d, real_t* w_d ) {
-          w_d[idx( x, y, z )] = b_d[idx( x, y, z )];
+           uint_t x, uint_t y, uint_t z, const std::array< real_t, 15 >& a, real_t const* u_d, real_t const* b_d) {
           real_t tmp          = 0;
           // SD::VERTEX_C
           tmp += a[0] * u_d[idx( x, y, z )];
@@ -1860,7 +1880,7 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
           // SD::VERTEX_TW
           tmp += a[14] * u_d[idx( x - 1, y, z + 1 )];
 
-          w_d[idx( x, y, z )] -= tmp;
+          return b_d[idx( x, y, z )] - tmp;
        };
 
    auto add_correction = [idx]( uint_t x, uint_t y, uint_t z, real_t const* w_d, real_t* u_d ) {
@@ -2037,7 +2057,7 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
             for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
             {
                // residual:
-               calc_residual( x, y, z, a_stencil, u, b, w );
+               w[idx( x, y, z )] = calc_residual( x, y, z, a_stencil, u, b );
                // substitution:
                apply_boundary_corrections( x, y, z, N_edge, l_stencil );
                apply_forward_substitution( x, y, z, l_stencil, w );
