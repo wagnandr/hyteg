@@ -138,6 +138,20 @@ int main( int argc, char** argv )
          if ( cell.getData( src2.getCellDataID() )->getPointer( level )[0] > 1000000 )
             WALBERLA_LOG_INFO_ON_ROOT( "op3 " << src2.getMaxMagnitude( level, All, true ) );
       }
+
+      for ( auto cit : storage->getCells() )
+      {
+         Cell& cell = *cit.second;
+
+         ldlt::p1::dim3::ConstantStencilNew opStencilProviderNew( level, cell, form, ldlt::p1::dim3::allDirections );
+
+         ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_constant_matrix< hyteg::P1Function< real_t >,
+             ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+             opStencilProviderNew, stencils_l.front(), stencils_lt.front(), stencils_d.front(), level, cell, src2, tmp, dst );
+
+         if ( cell.getData( src2.getCellDataID() )->getPointer( level )[0] > 1000000 )
+         WALBERLA_LOG_INFO_ON_ROOT( "op3 " << src2.getMaxMagnitude( level, All, true ) );
+      }
    }
    LIKWID_MARKER_CLOSE;
 }
