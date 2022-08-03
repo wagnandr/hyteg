@@ -1,6 +1,6 @@
 #pragma once
 
-// #include "hyteg/LikwidWrapper.hpp"
+#include "hyteg/LikwidWrapper.hpp"
 #include <Eigen/StdVector>
 
 #include "hyteg/polynomial/LSQPInterpolator.hpp"
@@ -1777,7 +1777,7 @@ void apply_full_surrogate_ilu_smoothing_step_constant_matrix( OpStencilProviderT
             {
                // residual:
                opStencilProvider.incrementEval( a_stencil );
-               calc_residual( x, y, z, a_stencil, u, b, w );
+               w[idx( x, y, z )] = calc_residual( x, y, z, a_stencil, u, b );
                // substitution:
                apply_forward_substitution( x, y, z, stencils_l, w );
             }
@@ -1993,7 +1993,7 @@ void apply_full_surrogate_ilu_smoothing_step_matrix( OpStencilProviderType&     
             {
                // residual:
                opStencilProvider.incrementEval( a_stencil );
-               calc_residual( x, y, z, a_stencil, u, b, w );
+               w[idx( x, y, z )] = calc_residual( x, y, z, a_stencil, u, b );
                // substitution:
                const auto& l_stencil = stencils_l[idx( x, y, z )];
                apply_forward_substitution( x, y, z, l_stencil, w );
