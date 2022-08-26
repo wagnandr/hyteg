@@ -22,6 +22,10 @@ waLBerla_add_executable( NAME ILUSmootherProf
         FILES ILUSmootherProfiling.cpp
         DEPENDS hyteg core)
 
+waLBerla_add_executable( NAME ILUForwardSubstitutionProfiling
+        FILES ILUForwardSubstitutionProfiling.cpp
+        DEPENDS hyteg core)
+
 waLBerla_add_executable( NAME ILUSketchbook
         FILES ILUSketchbook.cpp
         DEPENDS hyteg core)

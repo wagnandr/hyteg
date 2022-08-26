@@ -26,6 +26,7 @@
 #include "core/mpi/RecvBuffer.h"
 #include "core/mpi/SendBuffer.h"
 #include "core/mpi/BufferDataTypeExtensions.h"
+#include "Eigen/Dense"
 #include "hyteg/Math.hpp"
 
 namespace hyteg {
@@ -106,6 +107,11 @@ class Polynomial
    {
       WALBERLA_ASSERT(idx < numCoefficients_);
       return coeffs_[idx];
+   }
+
+   inline const std::vector< real_t > & getCoefficients() const
+   {
+      return coeffs_;
    }
 
    inline void addToCoefficient(uint_t idx, real_t value)
