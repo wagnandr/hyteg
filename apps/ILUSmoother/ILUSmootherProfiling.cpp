@@ -237,38 +237,38 @@ int main( int argc, char** argv )
              1.24659e+06, 372.244,     -27168.7,    215035,       248131,       917722,       1.18407e+06,  993428,
              -280.232,    19644.2,     -190978,     -48691.9,     616753,       735466,       554710 };
       w  = {
-           -0.120916, -0.0469086, 0.342341,  -1.06846,  1.73762,  -1.40366,   0.443739, -0.0104776, 0.51432,  -3.30576, 10.3722,
-           -16.3436,  12.4585,    -3.64676,  0.0911687, -3.58265, 23.5902,    -77.2392, 125.828,    -99.0049, 30.097,   -0.292962,
-           12.2335,   -77.077,    251.196,   -382.748,  270.544,  -71.2909,   0.487971, -20.4245,   120.056,  -382.551, 505.277,
-           -305.833,  72.8886,    -0.403309, 16.6336,   -90.4936, 283.616,    -302.973, 191.18,     -62.3727, 0.130158, -5.26821,
-           26.1361,   -80.5756,   58.7289,   -66.0085,  17.2689,  -0.0492985, -1.33804, 9.01379,    -32.3435, 55.2978,  -45.8392,
-           14.8123,   -0.119678,  -0.921702, 13.2243,   -83.2342, 203.601,    -214.249, 82.4506,    0.542842, -17.1552, 80.78,
-           -171.254,  244.855,    -308.019,  162.826,   -2.26276, 18.0679,    310.953,  -2472.53,   5685.26,  -5577.06, 2160.85,
-           3.86447,   -26.5526,   -582.167,  2716.46,   -770.559, -2943.88,   1829.43,  -3.13549,   27.1657,  521.766,  -2046.52,
-           3302.93,   -14048.6,   10533.2,   1.00568,   -10.5975, -196.194,   748.672,  -2253.72,   5479.32,  5708.91,  0.339376,
-           8.50824,   -45.604,    145.101,   -175.542,  86.5838,  -10.5097,   0.921439, 25.3604,    -222.576, 1078.55,  -2128.24,
-           1772.37,   -514.325,   -1.01915,  -10.676,   774.95,   -4867.38,   11461.8,  -10365.7,   3358.63,  4.89447,  627.142,
-           -8380.21,  42698.6,    -81875.8,  62207.7,   -16854.8, 5.00445,    -1147.4,  14037.1,    -59630.3, 72833,    -23250,
-           2397.36,   -14.5288,   1004.18,   -11970.2,  47930.1,  -58621.8,   50024.5,  -27148,     7.28691,  -346.115, 3914.68,
-           -14398.6,  12452.4,    -7294.84,  7849.3,    -1.04281, -29.2478,   141.464,  -456.714,   413.093,  -191.412, 50.6665,
-           -4.11162,  -108.313,   772.285,   -3735.69,  5993.3,   -3551.34,   566.176,  2.78298,    -85.7701, -2186.17, 15099.6,
-           -33300.1,  17212.6,    130.362,   -21.8474,  -2107.1,  29058.5,    -151316,  237235,     -108211,  11545.2,  -47.4781,
-           1427.14,   -34867.4,   135579,    -7633.63,  -190790,  72528,      62.0965,  -227.178,   24323.1,  -66170.2, -44802.6,
-           -13640.3,  88944.4,    -16.2118,  -198.21,   -5239.13, 225.129,    43019.4,  4845.54,    41480.1,  1.65851,  49.2345,
-           -177.074,  423.511,    471.001,   -442.873,  99.6357,  8.0849,     243.55,   -1488.81,   6950.1,   -6356.68, 133.209,
-           1265.92,   8.40313,    144.122,   6533.49,   -38960.9, 79225.7,    -18454.3, -7754,      -20.5859, 5064.5,   -61319.2,
-           270107,    -204117,    -99704,    52742.3,   319.786,  -393.588,   51848.4,  -64740.6,   -239487,  17301.9,  179120,
-           -192.244,  2295.07,    -35649,    -3382.94,  -11065.8, 137055,     176861,   21.4883,    -1401.26, 2010.28,  25293.5,
-           1050.74,   60558.4,    80979.8,   -1.31216,  -40.4096, 93.8654,    -181.343, -483.293,   -1399.77, 738.28,   -7.54136,
-           -249.707,  1160.89,    -4756.73,  -2517.03,  2230.42,  146.04,     -18.3243, -276.363,   -5718.52, 22140.4,  -6576.17,
-           -139763,   64972.8,    28.8545,   -4465.21,  41240.3,  -123777,    -167648,  55612.7,    140499,   -244.901, -6168.6,
-           13415.8,   -220137,    22275.4,   247534,    234859,   -389.125,   -4166.74, -27767.5,   -392.254, 164854,   244655,
-           187330,    194.37,     -464.079,  27147.8,   15292.3,  75090.7,    111992,   87805.6,    0.407643, 12.9555,  -14.7166,
-           39.109,    103.46,     767.629,   947.269,   2.71078,  94.6188,    -286.368, 1054.71,    2956.39,  2226.44,  3348.59,
-           9.27898,   187.08,     1605.68,   -1421.13,  -13156.2, 60494.6,    65097.3,  -3.07748,   1465.01,  -8147.74, 13855.1,
-           78865.3,   174159,     128864,    56.5943,   4036.07,  -15006.4,   82855.4,  252253,     280357,   183403,   240.499,
-           6166.21,   2719.37,    131643,    237680,    216954,   133575,     277.984,  4288.2,     16396.3,  50678.9,  105440,
-           100189,    63227.9 };
+          -0.120916, -0.0469086, 0.342341,  -1.06846,  1.73762,  -1.40366,   0.443739, -0.0104776, 0.51432,  -3.30576, 10.3722,
+          -16.3436,  12.4585,    -3.64676,  0.0911687, -3.58265, 23.5902,    -77.2392, 125.828,    -99.0049, 30.097,   -0.292962,
+          12.2335,   -77.077,    251.196,   -382.748,  270.544,  -71.2909,   0.487971, -20.4245,   120.056,  -382.551, 505.277,
+          -305.833,  72.8886,    -0.403309, 16.6336,   -90.4936, 283.616,    -302.973, 191.18,     -62.3727, 0.130158, -5.26821,
+          26.1361,   -80.5756,   58.7289,   -66.0085,  17.2689,  -0.0492985, -1.33804, 9.01379,    -32.3435, 55.2978,  -45.8392,
+          14.8123,   -0.119678,  -0.921702, 13.2243,   -83.2342, 203.601,    -214.249, 82.4506,    0.542842, -17.1552, 80.78,
+          -171.254,  244.855,    -308.019,  162.826,   -2.26276, 18.0679,    310.953,  -2472.53,   5685.26,  -5577.06, 2160.85,
+          3.86447,   -26.5526,   -582.167,  2716.46,   -770.559, -2943.88,   1829.43,  -3.13549,   27.1657,  521.766,  -2046.52,
+          3302.93,   -14048.6,   10533.2,   1.00568,   -10.5975, -196.194,   748.672,  -2253.72,   5479.32,  5708.91,  0.339376,
+          8.50824,   -45.604,    145.101,   -175.542,  86.5838,  -10.5097,   0.921439, 25.3604,    -222.576, 1078.55,  -2128.24,
+          1772.37,   -514.325,   -1.01915,  -10.676,   774.95,   -4867.38,   11461.8,  -10365.7,   3358.63,  4.89447,  627.142,
+          -8380.21,  42698.6,    -81875.8,  62207.7,   -16854.8, 5.00445,    -1147.4,  14037.1,    -59630.3, 72833,    -23250,
+          2397.36,   -14.5288,   1004.18,   -11970.2,  47930.1,  -58621.8,   50024.5,  -27148,     7.28691,  -346.115, 3914.68,
+          -14398.6,  12452.4,    -7294.84,  7849.3,    -1.04281, -29.2478,   141.464,  -456.714,   413.093,  -191.412, 50.6665,
+          -4.11162,  -108.313,   772.285,   -3735.69,  5993.3,   -3551.34,   566.176,  2.78298,    -85.7701, -2186.17, 15099.6,
+          -33300.1,  17212.6,    130.362,   -21.8474,  -2107.1,  29058.5,    -151316,  237235,     -108211,  11545.2,  -47.4781,
+          1427.14,   -34867.4,   135579,    -7633.63,  -190790,  72528,      62.0965,  -227.178,   24323.1,  -66170.2, -44802.6,
+          -13640.3,  88944.4,    -16.2118,  -198.21,   -5239.13, 225.129,    43019.4,  4845.54,    41480.1,  1.65851,  49.2345,
+          -177.074,  423.511,    471.001,   -442.873,  99.6357,  8.0849,     243.55,   -1488.81,   6950.1,   -6356.68, 133.209,
+          1265.92,   8.40313,    144.122,   6533.49,   -38960.9, 79225.7,    -18454.3, -7754,      -20.5859, 5064.5,   -61319.2,
+          270107,    -204117,    -99704,    52742.3,   319.786,  -393.588,   51848.4,  -64740.6,   -239487,  17301.9,  179120,
+          -192.244,  2295.07,    -35649,    -3382.94,  -11065.8, 137055,     176861,   21.4883,    -1401.26, 2010.28,  25293.5,
+          1050.74,   60558.4,    80979.8,   -1.31216,  -40.4096, 93.8654,    -181.343, -483.293,   -1399.77, 738.28,   -7.54136,
+          -249.707,  1160.89,    -4756.73,  -2517.03,  2230.42,  146.04,     -18.3243, -276.363,   -5718.52, 22140.4,  -6576.17,
+          -139763,   64972.8,    28.8545,   -4465.21,  41240.3,  -123777,    -167648,  55612.7,    140499,   -244.901, -6168.6,
+          13415.8,   -220137,    22275.4,   247534,    234859,   -389.125,   -4166.74, -27767.5,   -392.254, 164854,   244655,
+          187330,    194.37,     -464.079,  27147.8,   15292.3,  75090.7,    111992,   87805.6,    0.407643, 12.9555,  -14.7166,
+          39.109,    103.46,     767.629,   947.269,   2.71078,  94.6188,    -286.368, 1054.71,    2956.39,  2226.44,  3348.59,
+          9.27898,   187.08,     1605.68,   -1421.13,  -13156.2, 60494.6,    65097.3,  -3.07748,   1465.01,  -8147.74, 13855.1,
+          78865.3,   174159,     128864,    56.5943,   4036.07,  -15006.4,   82855.4,  252253,     280357,   183403,   240.499,
+          6166.21,   2719.37,    131643,    237680,    216954,   133575,     277.984,  4288.2,     16396.3,  50678.9,  105440,
+          100189,    63227.9 };
       bc = { -0.0720575, -0.410391, 2.72124,     -8.49774,  13.6178,    -10.8093,  3.3643,    0.0138614, -0.700821,  7.19378,
              -30.8925,   61.9496,   -58.8604,    21.3574,   0.00919943, 0.740276,  -2.20748,  -16.8733,  111.122,    -169.595,
              80.7582,    0.0464908, -6.38738,    56.3606,   -165.008,   83.8473,   -50.1182,  59.0449,   -0.0841044, 9.41224,
@@ -501,98 +501,101 @@ int main( int argc, char** argv )
             }
          }
 
-         for ( auto cit : storage->getCells() )
+         if (true)
          {
-            Cell& cell = *cit.second;
-
-            ldlt::p1::dim3::ConstantStencilNew opStencilProviderNew( level, cell, form, ldlt::p1::dim3::allDirections );
-
-            switch ( degx )
+            for ( auto cit : storage->getCells() )
             {
-            case 0:
-               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 0,
-                                                                            hyteg::P1Function< real_t >,
-                                                                            ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                   opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
-               break;
-            case 1:
-               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 1,
-                                                                            hyteg::P1Function< real_t >,
-                                                                            ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                   opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
-               break;
-            case 2:
-               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 2,
-                                                                            hyteg::P1Function< real_t >,
-                                                                            ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                   opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
-               break;
-            case 3:
-               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 3,
-                                                                            hyteg::P1Function< real_t >,
-                                                                            ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                   opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
-               break;
-            case 4:
-               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 4,
-                                                                            hyteg::P1Function< real_t >,
-                                                                            ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                   opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
-               break;
-            case 5:
-               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 5,
-                                                                            hyteg::P1Function< real_t >,
-                                                                            ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                   opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
-               break;
-            case 6:
-               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 6,
-                                                                            hyteg::P1Function< real_t >,
-                                                                            ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                   opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
-               break;
-            case 7:
-               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 7,
-                                                                            hyteg::P1Function< real_t >,
-                                                                            ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                   opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
-               break;
-            case 8:
-               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 8,
-                                                                            hyteg::P1Function< real_t >,
-                                                                            ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                   opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
-               break;
-            case 9:
-               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 9,
-                                                                            hyteg::P1Function< real_t >,
-                                                                            ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                   opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
-               break;
-            case 10:
-               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 10,
-                                                                            hyteg::P1Function< real_t >,
-                                                                            ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                   opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
-               break;
-            case 11:
-               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 11,
-                                                                            hyteg::P1Function< real_t >,
-                                                                            ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                   opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
-               break;
-            case 12:
-               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 12,
-                                                                            hyteg::P1Function< real_t >,
-                                                                            ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                   opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
-               break;
-            default:
-               WALBERLA_ABORT( "not implemented" );
-            }
+               Cell& cell = *cit.second;
 
-            if ( cell.getData( src2.getCellDataID() )->getPointer( level )[0] > 1000000 )
-               WALBERLA_LOG_INFO_ON_ROOT( "op3 " << src2.getMaxMagnitude( level, All, true ) );
+               ldlt::p1::dim3::ConstantStencilNew opStencilProviderNew( level, cell, form, ldlt::p1::dim3::allDirections );
+
+               switch ( degx )
+               {
+//               case 0:
+//                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 0,
+//                      hyteg::P1Function< real_t >,
+//                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+//                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+//                  break;
+               case 1:
+                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 1,
+                      hyteg::P1Function< real_t >,
+                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  break;
+               case 2:
+                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 2,
+                      hyteg::P1Function< real_t >,
+                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  break;
+               case 3:
+                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 3,
+                      hyteg::P1Function< real_t >,
+                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  break;
+               case 4:
+                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 4,
+                      hyteg::P1Function< real_t >,
+                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  break;
+               case 5:
+                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 5,
+                      hyteg::P1Function< real_t >,
+                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  break;
+               case 6:
+                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 6,
+                      hyteg::P1Function< real_t >,
+                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  break;
+               case 7:
+                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 7,
+                      hyteg::P1Function< real_t >,
+                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  break;
+               case 8:
+                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 8,
+                      hyteg::P1Function< real_t >,
+                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  break;
+               case 9:
+                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 9,
+                      hyteg::P1Function< real_t >,
+                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  break;
+               case 10:
+                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 10,
+                      hyteg::P1Function< real_t >,
+                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  break;
+               case 11:
+                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 11,
+                      hyteg::P1Function< real_t >,
+                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  break;
+               case 12:
+                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 12,
+                      hyteg::P1Function< real_t >,
+                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  break;
+               default:
+                  WALBERLA_ABORT( "not implemented" );
+               }
+
+               if ( cell.getData( src2.getCellDataID() )->getPointer( level )[0] > 1000000 )
+                  WALBERLA_LOG_INFO_ON_ROOT( "op3 " << src2.getMaxMagnitude( level, All, true ) );
+            }
          }
       }
 
@@ -601,6 +604,64 @@ int main( int argc, char** argv )
          tmp.assign( { 1, -1 }, { src1, src2 }, level, Inner );
          auto resultDot = tmp.dotGlobal( tmp, level, Inner );
          WALBERLA_LOG_INFO_ON_ROOT( "dot " << resultDot );
+      }
+
+      // use even newer implementation
+      /*
+      {
+         Eigen::MatrixXd delta_l( 8 * levelinfo::num_microvertices_per_face( level ), degz + 1 );
+         for ( int r = 0; r < 8 * levelinfo::num_microvertices_per_face( level ); r += 1 )
+            for ( int c = 0; c < degz + 1; c += 1 )
+               delta_l( r, c ) = walberla::math::realRandom( -0.01, 0.01 );
+
+         for ( uint_t i = 0; i < numberOfIterations; i += 1 )
+         {
+            for ( auto cit : storage->getCells() )
+            {
+               Cell& cell = *cit.second;
+
+               ldlt::p1::dim3::ConstantStencilNew opStencilProviderNew( level, cell, form, ldlt::p1::dim3::allDirections );
+
+               // WALBERLA_LOG_INFO_ON_ROOT("?");
+
+               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new2< hyteg::P1Function< real_t >,
+                                                                             ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                   opStencilProviderNew, delta_l, level, cell, src2, tmp, dst );
+
+               // WALBERLA_LOG_INFO_ON_ROOT("!");
+            }
+         }
+      }
+       */
+      {
+         // std::vector< Eigen::MatrixXd > delta_l;
+         std::vector< Eigen::Matrix<real_t, 7, 8, Eigen::RowMajor>, Eigen::aligned_allocator<Eigen::Matrix<real_t, 7, 8, Eigen::RowMajor>> > delta_l;
+         for ( int r = 0; r < levelinfo::num_microvertices_per_face( level ); r += 1 )
+         {
+            Eigen::Matrix< real_t, 7, 8 > mat( 7, degz + 1 );
+            for ( int r = 0; r < 7; r += 1 )
+               for ( int c = 0; c < degz + 1; c += 1 )
+                  mat( r, c ) = walberla::math::realRandom( -0.01, 0.01 );
+            delta_l.push_back(mat);
+         }
+
+         for ( uint_t i = 0; i < numberOfIterations; i += 1 )
+         {
+            for ( auto cit : storage->getCells() )
+            {
+               Cell& cell = *cit.second;
+
+               ldlt::p1::dim3::ConstantStencilNew opStencilProviderNew( level, cell, form, ldlt::p1::dim3::allDirections );
+
+               // WALBERLA_LOG_INFO_ON_ROOT("?");
+
+               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new4< hyteg::P1Function< real_t >,
+                   ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                   opStencilProviderNew, delta_l, level, cell, src2, tmp, dst );
+
+               // WALBERLA_LOG_INFO_ON_ROOT("!");
+            }
+         }
       }
    }
    LIKWID_MARKER_CLOSE;

@@ -2629,14 +2629,16 @@ void apply_forward_substitution_new_2( OpStencilProviderType& opStencilProvider,
           return b_d_0 - tmp;
        };
 
-   Eigen::Matrix< real_t, degx + 1, Eigen::Dynamic > xh_power( degx + 1, N_edge - 2 + 1 );
+   std::vector< Eigen::Matrix< real_t, degx + 1, 1 >, Eigen::aligned_allocator<Eigen::Matrix<real_t, degx + 1, 1> >>  xh_power;
 
    for ( int x = 0; x <= int( N_edge ) - 2; x += 1 )
    {
       const real_t xh  = real_c( x ) * h;
-      xh_power( 0, x ) = 1.;
+      Eigen::Matrix< real_t, degx + 1, 1 > v;
+      v( 0 ) = 1.;
       for ( int i = 1; i < degx + 1; i += 1 )
-         xh_power( i, x ) = xh_power( i - 1, x ) * xh;
+         v( i ) = v( i - 1 ) * xh;
+      xh_power.push_back(v);
    }
 
    // ---------------------
@@ -2669,7 +2671,7 @@ void apply_forward_substitution_new_2( OpStencilProviderType& opStencilProvider,
                // residual:
                w[idx( x, y, z )] = calc_residual( x, y, z, a_stencil, u, b );
 
-               Eigen::Matrix< real_t, 7, 1 > l_stencil = mat * xh_power.col( x );
+               Eigen::Matrix< real_t, 7, 1 > l_stencil = mat * xh_power[x];
 
                // substitution:
                apply_boundary_corrections( x, y, z, N_edge, l_stencil );
@@ -3400,19 +3402,17 @@ void apply_forward_substitution_new_4( OpStencilProviderType& opStencilProvider,
             {
                w[idx( x, y, z )] = calc_residual( x, y, z, a_stencil, u, b );
                apply_forward_substitution( x, y, z, w );
-               const int r = idxf( x, y);
-               for (int col = 0; col < delta_l.cols()-1; col += 1)
-                delta_l.block(r, col, 8, 1).noalias() += delta_l.block(r, col+1, 8, 1);
+               // const int r = idxf( x, y);
+               // for (int col = 0; col < delta_l.cols()-1; col += 1)
+               // delta_l.block(r, col, 8, 1).noalias() += delta_l.block(r, col+1, 8, 1);
             }
 
-            /*
             for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
             {
                const int r = idxf( x, y);
                for (int col = 0; col < delta_l.cols()-1; col += 1)
                   delta_l.block(r, col, 8, 1).noalias() += delta_l.block(r, col+1, 8, 1);
             }
-             */
 
             //const int startx = idxf(1, y) * 8;
             //const int numx = (N_edge - 2 - z - y) * 8;
