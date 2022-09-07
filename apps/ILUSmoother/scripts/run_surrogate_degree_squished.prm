@@ -52,6 +52,9 @@ Parameters
   smoother_type gs;
   // smoother_type cell_gs;
 
+  // constant, varying, polynomial
+  main_operator_stencil_type constant;
+
   ilu_surrogate_degree_x 6;
   ilu_surrogate_degree_y 6;
   ilu_surrogate_degree_z 6;
@@ -68,4 +71,8 @@ Parameters
 
   // damping factor of the smoother
   relax 1.;
+
+  is_neumann false;
+
+  permutation_type lfa;
 }

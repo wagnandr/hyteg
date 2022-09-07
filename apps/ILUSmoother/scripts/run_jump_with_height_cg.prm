@@ -37,7 +37,8 @@ Parameters
   kappa_lower 1.0;
   kappa_upper 2.0;
 
-  auto_permutation true;
+  // lfa, heuristic, none
+  permutation_type lfa;
 
   // use PCG with mg preconditioner
   usePCG true;
@@ -48,12 +49,17 @@ Parameters
   smoother_type gs;
   // smoother_type cell_gs;
 
+  // solver types: cg_gmg, gmg, cg_ilu, cg_none
+  solver_type cg_gmg;
+
   ilu_surrogate_degree_x 6;
   ilu_surrogate_degree_y 6;
   ilu_surrogate_degree_z 6;
   ilu_surrogate_skip_level 4;
 
   ilu_use_boundary_correction true;
+ 
+  main_operator_stencil_type varying;
 
   op_surrogate_degree_x 8;
   op_surrogate_degree_y 8;
@@ -66,4 +72,6 @@ Parameters
 
   // damping factor of the smoother
   relax 1.;
+
+  is_neumann false;
 }

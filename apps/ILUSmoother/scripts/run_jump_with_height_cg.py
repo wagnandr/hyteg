@@ -40,8 +40,8 @@ smoother_types = [ilu_basic, gs]
 if __name__ == '__main__':
     output = []
     kappa_lower = 1.
-    #kappa_uppers = [1e-5, 1e0, 1e5]
-    kappa_uppers = [1e0]
+    kappa_uppers = [1e-5, 1e0, 1e5]
+    #kappa_uppers = [1e0]
     heights = [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.025, 0.0125]
     for kappa_upper in kappa_uppers:
         for smoother in smoother_types:

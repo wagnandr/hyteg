@@ -7,7 +7,8 @@ from run_surrogate_degree_isotropic import ilu_basic, ilu_surrogate, kappa_type
 
 colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
 
-with open('run_surrogate_degree_squished_uniform.json') as f:
+#with open('run_surrogate_degree_squished_uniform.json') as f:
+with open('run_surrogate_degree_squished_only_z_2.json') as f:
     data = json.loads(f.read())
 
 data = data['results']
@@ -35,6 +36,7 @@ ax[0].set_ylim([10**(-3), 1])
 ax[0].set_xticks([i for i in range(len(surr_ilu_rates_boundary))])
 ax[0].grid(True)
 
+'''
 with open('run_surrogate_degree_squished_only_z_0.json') as f:
     data = json.loads(f.read())
 
@@ -59,6 +61,7 @@ ax[1].set_xlabel(r'$dg_z$')
 ax[1].set_ylim([10**(-3), 1])
 ax[1].set_xticks([i for i in range(len(surr_ilu_rates_boundary))])
 ax[1].grid(True)
+'''
 
 '''
 with open('run_surrogate_degree_squished_only_z_2.json') as f:
