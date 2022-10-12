@@ -1,0 +1,91 @@
+Parameters
+{
+  minLevel 2;
+  maxLevel 6;
+  max_outer_iter 1000;
+  max_coarse_iter 100;
+  mg_tolerance 1e-6;
+  coarse_tolerance 1e-16;
+  vtkOutput true;
+  csvOutput true;
+
+  asymptotic_convergence_start_iter 3;
+
+  num_smoothing_steps 3;
+
+  // replaces the zero initial guess with something random
+  randomInitialGuess true;
+  powermethod true;
+
+  // which solution: zero, sines?
+  // solution_type sines;
+  // solution_type linear_with_coefficient;
+  solution_type linear;
+
+  // for domain tetrahedron;:
+  tetrahedron_permutation 2;
+  tetrahedron_height 0.1;
+
+  // domain squished_cube;
+  // domain two_layer_cube_v2;
+  // domain tetrahedron;
+  // domain two_layer_cube;
+  // domain tetrahedron_cap;
+  // domain tetrahedron_spindle;
+  // domain tetrahedron_regular;
+  // domain tetrahedron_spade;
+  // domain blended_shell_triangle_1;
+  domain blended_shell_triangle_2;
+
+  // kappa_type unspecified;
+  kappa_type constant;
+  // kappa_type linear;
+  // kappa_type quadratic;
+  // kappa_type cubic;
+
+  kappa_upper 1.0;
+  kappa_lower 1.0;
+
+  // lfa, heuristic, none
+  // permutation_type heuristic;
+  permutation_type lfa;
+
+  // use PCG with mg preconditioner
+  usePCG false;
+
+  // solver types: cg_gmg, gmg, cg_ilu, cg_none
+  // solver_type cg_gmg;
+  // solver_type cg_none;
+  solver_type cg_ilu;
+
+  // which smoother: hyteg_gs, eigen_ilu, inplace_ldlt
+  smoother_type surrogate_ldlt;
+  // smoother_type inplace_ldlt;
+  // smoother_type gs;
+  // smoother_type cell_gs;
+
+  ilu_surrogate_degree_x 10;
+  ilu_surrogate_degree_y 10;
+  ilu_surrogate_degree_z 10;
+  ilu_surrogate_skip_level 4;
+
+  ilu_use_boundary_correction true;
+
+  // constant, varying, polynomial
+  // main_operator_stencil_type constant;
+  main_operator_stencil_type varying;
+
+  op_surrogate_degree_x 0;
+  op_surrogate_degree_y 0;
+  op_surrogate_degree_z 0;
+  op_surrogate_assembly_level 5;
+  op_surrogate_use_symmetry true;
+
+  sm_steps_lower_primitives 20;
+  sm_steps_lower_primitives_backward 20;
+
+  // damping factor of the smoother
+  relax 1.;
+
+  is_neumann false;
+}

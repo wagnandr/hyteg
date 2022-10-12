@@ -516,18 +516,21 @@ int main( int argc, char** argv )
       WALBERLA_LOG_INFO_ON_ROOT("cg_gmg!")
       fineGridSolver = std::make_shared< hyteg::CGSolver< OperatorType > >(
           storage, minLevel, maxLevel, max_outer_iter, mg_tolerance, multiGridSolver );
+      fineGridSolver->setRealResidual( true );
    }
    else if ( solver_type == "cg_ilu" )
    {
       WALBERLA_LOG_INFO_ON_ROOT("cg_ilu!")
       fineGridSolver = std::make_shared< hyteg::CGSolver< OperatorType > >(
           storage, minLevel, maxLevel, max_outer_iter, mg_tolerance, smoother );
+      fineGridSolver->setRealResidual( true );
    }
    else if ( solver_type == "cg_none" )
    {
       WALBERLA_LOG_INFO_ON_ROOT("cg_none!")
       fineGridSolver =
           std::make_shared< hyteg::CGSolver< OperatorType > >( storage, minLevel, maxLevel, max_outer_iter, mg_tolerance );
+      fineGridSolver->setRealResidual( true );
    }
 
    WALBERLA_LOG_INFO_ON_ROOT( "Starting V cycles" );

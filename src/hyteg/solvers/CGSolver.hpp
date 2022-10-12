@@ -50,9 +50,11 @@ class CGSolver : public Solver< OperatorType >
    , z_( "z", storage, minLevel, maxLevel )
    , ap_( "ap", storage, minLevel, maxLevel )
    , r_( "r", storage, minLevel, maxLevel )
+   , tmp_res_( "tmp_res", storage, minLevel, maxLevel )
    , preconditioner_( preconditioner )
    , flag_( hyteg::Inner | hyteg::NeumannBoundary | hyteg::FreeslipBoundary )
    , printInfo_( false )
+   , realResidual_( false )
    , tolerance_( tolerance )
    , restartFrequency_( std::numeric_limits< uint_t >::max() )
    , maxIter_( maxIter )
@@ -100,10 +102,18 @@ class CGSolver : public Solver< OperatorType >
          pAp = p_.dotGlobal( ap_, level, flag_ );
 
          alpha = prsold / pAp;
-         x.add( {alpha}, {p_}, level, flag_ );
-         r_.add( {-alpha}, {ap_}, level, flag_ );
+         x.add( { alpha }, { p_ }, level, flag_ );
+         r_.add( { -alpha }, { ap_ }, level, flag_ );
          rsnew   = r_.dotGlobal( r_, level, flag_ );
          sqrsnew = std::sqrt( rsnew );
+
+         if ( realResidual_ )
+         {
+            A.apply( x, tmp_res_, level, flag_, Replace );
+            tmp_res_.assign( { +1, -1 }, { b, tmp_res_ }, level, flag_ );
+            rsnew   = tmp_res_.dotGlobal( tmp_res_, level, flag_ );
+            sqrsnew = std::sqrt( rsnew );
+         }
 
          if ( printInfo_ )
          {
@@ -124,7 +134,7 @@ class CGSolver : public Solver< OperatorType >
          prsnew = r_.dotGlobal( z_, level, flag_ );
          beta   = prsnew / prsold;
 
-         p_.assign( {1.0, beta}, {z_, p_}, level, flag_ );
+         p_.assign( { 1.0, beta }, { z_, p_ }, level, flag_ );
          prsold = prsnew;
 
          if ( i > 0 && i % restartFrequency_ == 0 )
@@ -195,8 +205,8 @@ class CGSolver : public Solver< OperatorType >
 
       // init CG
       A.apply( x, p_, level, flag_, Replace );
-      r_.assign( {1.0, -1.0}, {b, p_}, level, flag_ );
-      p_.assign( {1.0}, {r_}, level, flag_ );
+      r_.assign( { 1.0, -1.0 }, { b, p_ }, level, flag_ );
+      p_.assign( { 1.0 }, { r_ }, level, flag_ );
       prsold = r_.dotGlobal( r_, level, flag_ );
 
       // required for diagonal entries, set values
@@ -215,14 +225,14 @@ class CGSolver : public Solver< OperatorType >
          alpha = prsold / pAp;
          mainDiag.push_back( 1.0 / alpha + beta / alpha_old );
 
-         x.add( {alpha}, {p_}, level, flag_ );
-         r_.add( {-alpha}, {ap_}, level, flag_ );
+         x.add( { alpha }, { p_ }, level, flag_ );
+         r_.add( { -alpha }, { ap_ }, level, flag_ );
 
          prsnew = r_.dotGlobal( r_, level, flag_ );
          beta   = prsnew / prsold;
          subDiag.push_back( std::sqrt( beta ) / alpha );
 
-         p_.assign( {1.0, beta}, {r_, p_}, level, flag_ );
+         p_.assign( { 1.0, beta }, { r_, p_ }, level, flag_ );
          prsold = prsnew;
 
          alpha_old = alpha;
@@ -238,13 +248,15 @@ class CGSolver : public Solver< OperatorType >
 
    void setPrintInfo( bool printInfo ) { printInfo_ = printInfo; }
 
+   void setRealResidual( bool realResidual ) { realResidual_ = realResidual; }
+
  private:
    void init( const OperatorType& A, const FunctionType& x, const FunctionType& b, const uint_t level, real_t& prsold ) const
    {
       A.apply( x, p_, level, flag_, Replace );
-      r_.assign( {1.0, -1.0}, {b, p_}, level, flag_ );
+      r_.assign( { 1.0, -1.0 }, { b, p_ }, level, flag_ );
       preconditioner_->solve( A, z_, r_, level );
-      p_.assign( {1.0}, {z_}, level, flag_ );
+      p_.assign( { 1.0 }, { z_ }, level, flag_ );
       prsold = r_.dotGlobal( z_, level, flag_ );
    }
 
@@ -252,10 +264,12 @@ class CGSolver : public Solver< OperatorType >
    FunctionType                              z_;
    FunctionType                              ap_;
    FunctionType                              r_;
+   FunctionType                              tmp_res_;
    std::shared_ptr< Solver< OperatorType > > preconditioner_;
 
    hyteg::DoFType flag_;
    bool           printInfo_;
+   bool           realResidual_;
    real_t         tolerance_;
    uint_t         restartFrequency_;
    uint_t         maxIter_;
