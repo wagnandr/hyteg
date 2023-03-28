@@ -67,6 +67,14 @@ Parameters
   sm_steps_lower_primitives 1;
   sm_steps_lower_primitives_backward 1;
 
+  is_neumann false;
+
+  permutation_type lfa;
+
+  solver_type gmg;
+
+  main_operator_stencil_type varying;
+
   // damping factor of the smoother
   relax 1.;
 }

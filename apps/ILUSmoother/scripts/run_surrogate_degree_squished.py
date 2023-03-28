@@ -14,8 +14,9 @@ class ResultsMGSurrogate:
     rate: float
     height: float
 
-def run_height_mg(smoother, ilu_deg, op_deg, boundary_correction, height):
+def run_height_mg(smoother, ilu_deg, op_deg, boundary_correction, height, maxLevel):
     output = run('./run_surrogate_degree_squished.prm', [
+        f'-Parameters.maxLevel={maxLevel}',
         f'-Parameters.smoother_type={smoother}',
         f'-Parameters.domain=tetrahedron',
         f'-Parameters.tetrahedron_height={height}',
@@ -50,19 +51,22 @@ if __name__ == '__main__':
     height = 0.1
     uniform = False
     deg_xy = 2
+    maxLevel = 8
     for deg in degrees:
-        for boundary_correction in [False, True]:
+        for boundary_correction in [True]:
             if uniform:
                 ilu_deg = (deg, deg, deg)
             else:
                 ilu_deg = (deg_xy, deg_xy, deg)
             #op_deg = (deg, deg, deg)
-            output.append(run_height_mg(ilu_surrogate, ilu_deg, op_deg, boundary_correction, height))
+            output.append(run_height_mg(ilu_surrogate, ilu_deg, op_deg, boundary_correction, height, maxLevel))
             print(to_json(output))
 
-    output.append(run_height_mg(ilu_basic, [0, 0, 0], op_deg, True, height))
+    output.append(run_height_mg(ilu_basic, [0, 0, 0], op_deg, True, height, maxLevel))
 
-    with open(f'run_surrogate_degree_squished_{"uniform" if uniform else f"only_z_{deg_xy}"}.json', 'w') as f:
+    level = int(output[0].maxLevel)
+
+    with open(f'run_surrogate_lvl{level}_degree_squished_{"uniform" if uniform else f"only_z_{deg_xy}"}.json', 'w') as f:
         f.write(to_json({
             'script': 'run_surrogate_degree_squished',
             'results': output

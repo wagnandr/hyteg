@@ -46,6 +46,12 @@ Parameters
   // use PCG with mg preconditioner
   usePCG false;
 
+  is_neumann false;
+  solver_type gmg;
+  permutation_type lfa;
+
+  main_operator_stencil_type varying;
+
   // which smoother: hyteg_gs, eigen_ilu, inplace_ldlt
   // smoother_type surrogate_ldlt;
   // smoother_type inplace_ldlt;

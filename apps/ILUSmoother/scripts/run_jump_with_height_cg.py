@@ -19,7 +19,7 @@ def run_height_cg(smoother, kappa_lower, kappa_upper, height):
         f'-Parameters.kappa_lower={kappa_lower}',
         f'-Parameters.kappa_upper={kappa_upper}',
         f'-Parameters.tetrahedron_height={height}',
-    ], 2)
+    ], 8)
     print(output)
     return ResultsMGJump(
         maxLevel=extract_number('maxLevel', output),

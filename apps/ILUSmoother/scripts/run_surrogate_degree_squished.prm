@@ -1,7 +1,7 @@
 Parameters
 {
   minLevel 2;
-  maxLevel 6;
+  maxLevel 8;
   max_outer_iter 20;
   max_coarse_iter 100;
   mg_tolerance 1e-14;
@@ -51,6 +51,8 @@ Parameters
   // smoother_type inplace_ldlt;
   smoother_type gs;
   // smoother_type cell_gs;
+
+  solver_type gmg;
 
   // constant, varying, polynomial
   main_operator_stencil_type constant;
