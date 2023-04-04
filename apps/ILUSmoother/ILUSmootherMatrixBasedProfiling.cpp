@@ -26,6 +26,7 @@
 #include "core/mpi/MPIManager.h"
 
 #include "hyteg/LikwidWrapper.hpp"
+#include <likwid.h>
 #include "hyteg/elementwiseoperators/P1ElementwiseOperator.hpp"
 #include "hyteg/p1functionspace/P1Function.hpp"
 #include "hyteg/p1functionspace/P1VariableOperator.hpp"
@@ -62,6 +63,10 @@ int main( int argc, char** argv )
    walberla::Config::BlockHandle parameters = cfg->getOneBlock( "Parameters" );
    parameters.listParameters();
 
+   LIKWID_MARKER_START("test123");
+   WALBERLA_LOG_INFO_ON_ROOT("test");
+   LIKWID_MARKER_STOP("test123");
+
    const uint_t level                = parameters.getParameter< uint_t >( "level" );
    const uint_t numberOfIterations   = parameters.getParameter< uint_t >( "number_of_iterations" );
    const uint_t numSubdivision       = parameters.getParameter< uint_t >( "number_of_subdivisions" );
@@ -95,33 +100,45 @@ int main( int argc, char** argv )
 
    hyteg::P1Function< real_t > tmp( "tmp", storage, level, level );
 
-   std::vector< std::array< real_t, 7 > > stencils_l{};
-   for ( uint_t i = 0; i < levelinfo::num_microvertices_per_cell( level ); i += 1 )
+   std::map< hyteg::PrimitiveID::IDType, std::vector< std::array< real_t, 7 > > > all_stencils_l;
+   std::map< hyteg::PrimitiveID::IDType, std::vector< std::array< real_t, 7 > > > all_stencils_lt;
+   std::map< hyteg::PrimitiveID::IDType, std::vector< std::array< real_t, 1 > > > all_stencils_d;
+
+   for ( auto cit : storage->getCells() )
    {
-      stencils_l.push_back( { walberla::math::realRandom( 0., 1. ),
-                              walberla::math::realRandom( 0., 1. ),
-                              walberla::math::realRandom( 0., 1. ),
-                              walberla::math::realRandom( 0., 1. ),
-                              walberla::math::realRandom( 0., 1. ),
-                              walberla::math::realRandom( 0., 1. ) } );
+      std::vector< std::array< real_t, 7 > > stencils_l{};
+      for ( uint_t i = 0; i < levelinfo::num_microvertices_per_cell( level ); i += 1 )
+      {
+         stencils_l.push_back( { walberla::math::realRandom( 0., 1. ),
+                                 walberla::math::realRandom( 0., 1. ),
+                                 walberla::math::realRandom( 0., 1. ),
+                                 walberla::math::realRandom( 0., 1. ),
+                                 walberla::math::realRandom( 0., 1. ),
+                                 walberla::math::realRandom( 0., 1. ) } );
+      }
+
+      std::vector< std::array< real_t, 7 > > stencils_lt{};
+      for ( uint_t i = 0; i < levelinfo::num_microvertices_per_cell( level ); i += 1 )
+      {
+         stencils_lt.push_back( { walberla::math::realRandom( 0., 1. ),
+                                 walberla::math::realRandom( 0., 1. ),
+                                 walberla::math::realRandom( 0., 1. ),
+                                 walberla::math::realRandom( 0., 1. ),
+                                 walberla::math::realRandom( 0., 1. ),
+                                 walberla::math::realRandom( 0., 1. ) } );
+      }
+
+      std::vector< std::array< real_t, 1 > > stencils_d{};
+      for ( uint_t i = 0; i < levelinfo::num_microvertices_per_cell( level ); i += 1 )
+      {
+         stencils_d.push_back( { walberla::math::realRandom( 0., 1. ) } );
+      }
+
+      all_stencils_l[cit.first] = stencils_l;
+      all_stencils_lt[cit.first] = stencils_lt;
+      all_stencils_d[cit.first] = stencils_d;
    }
 
-   std::vector< std::array< real_t, 7 > > stencils_lt{};
-   for ( uint_t i = 0; i < levelinfo::num_microvertices_per_cell( level ); i += 1 )
-   {
-      stencils_lt.push_back( { walberla::math::realRandom( 0., 1. ),
-                               walberla::math::realRandom( 0., 1. ),
-                               walberla::math::realRandom( 0., 1. ),
-                               walberla::math::realRandom( 0., 1. ),
-                               walberla::math::realRandom( 0., 1. ),
-                               walberla::math::realRandom( 0., 1. ) } );
-   }
-
-   std::vector< std::array< real_t, 1 > > stencils_d{};
-   for ( uint_t i = 0; i < levelinfo::num_microvertices_per_cell( level ); i += 1 )
-   {
-      stencils_d.push_back( { walberla::math::realRandom( 0., 1. ) } );
-   }
 
    for ( uint_t i = 0; i < numberOfIterations; i += 1 )
    {
@@ -130,6 +147,10 @@ int main( int argc, char** argv )
          Cell& cell = *cit.second;
 
          ldlt::p1::dim3::ConstantStencilNew opStencilProviderNew( level, cell, form, ldlt::p1::dim3::allDirections );
+
+         std::vector< std::array< real_t, 7 > >& stencils_l = all_stencils_l.at(cit.first);
+         std::vector< std::array< real_t, 7 > >& stencils_lt = all_stencils_lt.at(cit.first);
+         std::vector< std::array< real_t, 1 > >& stencils_d = all_stencils_d.at(cit.first);
 
          ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_matrix< hyteg::P1Function< real_t >,
                                                                          ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
@@ -143,6 +164,10 @@ int main( int argc, char** argv )
       {
          Cell& cell = *cit.second;
 
+         std::vector< std::array< real_t, 7 > >& stencils_l = all_stencils_l.at(cit.first);
+         std::vector< std::array< real_t, 7 > >& stencils_lt = all_stencils_lt.at(cit.first);
+         std::vector< std::array< real_t, 1 > >& stencils_d = all_stencils_d.at(cit.first);
+
          ldlt::p1::dim3::ConstantStencilNew opStencilProviderNew( level, cell, form, ldlt::p1::dim3::allDirections );
 
          ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_constant_matrix< hyteg::P1Function< real_t >,
@@ -151,7 +176,9 @@ int main( int argc, char** argv )
 
          if ( cell.getData( src2.getCellDataID() )->getPointer( level )[0] > 1000000 )
          WALBERLA_LOG_INFO_ON_ROOT( "op3 " << src2.getMaxMagnitude( level, All, true ) );
-      }
    }
+      }
    LIKWID_MARKER_CLOSE;
+
+   WALBERLA_LOG_INFO_ON_ROOT("After close");
 }
