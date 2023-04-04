@@ -1,7 +1,7 @@
 Parameters
 {
   minLevel 2;
-  maxLevel 6;
+  maxLevel 8;
   max_outer_iter 20;
   max_coarse_iter 100;
   mg_tolerance 1e-14;
@@ -52,6 +52,11 @@ Parameters
   smoother_type gs;
   // smoother_type cell_gs;
 
+  solver_type gmg;
+
+  // constant, varying, polynomial
+  main_operator_stencil_type constant;
+
   ilu_surrogate_degree_x 6;
   ilu_surrogate_degree_y 6;
   ilu_surrogate_degree_z 6;
@@ -68,4 +73,8 @@ Parameters
 
   // damping factor of the smoother
   relax 1.;
+
+  is_neumann false;
+
+  permutation_type lfa;
 }

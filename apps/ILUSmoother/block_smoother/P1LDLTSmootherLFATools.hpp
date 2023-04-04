@@ -350,12 +350,12 @@ real_t estimateAsymptoticSmootherRate( const std::array< Point3D, 4 >& coordinat
             auto symbol_d    = ldlt::p1::dim3::calculateSymbol( d_stencil, theta, h );
             auto symbol_ldlt = symbol_l * symbol_d * symbol_lt;
 
-            WALBERLA_LOG_INFO_ON_ROOT(symbol_d << " " << symbol_a);
+            // WALBERLA_LOG_INFO_ON_ROOT(symbol_d << " " << symbol_a);
 
             auto symbol = std::abs( 1. - symbol_a / symbol_ldlt );
 
-            if (symbol > 0.9)
-               WALBERLA_LOG_INFO_ON_ROOT("");
+            // if (symbol > 0.9)
+            //    WALBERLA_LOG_INFO_ON_ROOT("");
 
             max_symbol = std::max( symbol, max_symbol );
             mean_symbol += symbol;
@@ -809,10 +809,12 @@ std::array< uint_t, 4 > permutation_ilu_heuristic_3d( const Cell& cell )
    // find opposite triangle
    auto maxLocalVertexIds = getVertexIds( maxAreaIndex );
 
+   /*
    WALBERLA_LOG_INFO_ON_ROOT( "coordinates " << cell.getCoordinates()[0] << " " << cell.getCoordinates()[1] << " " << cell.getCoordinates()[2]
                                              << " " << cell.getCoordinates()[3] );
 
    WALBERLA_LOG_INFO_ON_ROOT("opposite " << maxAreaIndex);
+    */
 
 
    /*
@@ -831,6 +833,7 @@ std::array< uint_t, 4 > permutation_ilu_heuristic_3d( const Cell& cell )
    const auto distances        = get_distances( cell, maxLocalVertexIds, maxAreaIndex );
    auto       minDistanceIndex = min_index( distances, maxLocalVertexIds );
 
+   /*
    WALBERLA_LOG_INFO_ON_ROOT("local vertex ids " <<
                               maxLocalVertexIds[0] << " " <<
                               maxLocalVertexIds[1] << " " <<
@@ -842,6 +845,7 @@ std::array< uint_t, 4 > permutation_ilu_heuristic_3d( const Cell& cell )
        distances[1] << " " <<
        distances[2]
    );
+    */
 
    const auto angles          = get_triangle_angles( cell, maxLocalVertexIds );
    uint_t     min_angle_index = 100;
@@ -915,22 +919,22 @@ class ILUPermutator
    std::array< uint_t, 4 > operator()( const Cell& cell )
    {
       auto p1 = permutation( cell );
-      auto p2 = permutation_ilu_heuristic_3d( cell );
+      // auto p2 = permutation_ilu_heuristic_3d( cell );
 
-      auto c1 = get_permutated_coordinates( cell, p1 );
-      auto c2 = get_permutated_coordinates( cell, p2 );
+      // auto c1 = get_permutated_coordinates( cell, p1 );
+      // auto c2 = get_permutated_coordinates( cell, p2 );
 
-      auto s1 = ldlt::p1::dim3::estimateAsymptoticSmootherRate( c1, level_, form_ );
-      auto s2 = ldlt::p1::dim3::estimateAsymptoticSmootherRate( c2, level_, form_ );
+      // auto s1 = ldlt::p1::dim3::estimateAsymptoticSmootherRate( c1, level_, form_ );
+      // auto s2 = ldlt::p1::dim3::estimateAsymptoticSmootherRate( c2, level_, form_ );
 
       auto& c = cell.getCoordinates();
 
-      WALBERLA_LOG_INFO_ON_ROOT( "vertices: " << c[0] << " " << c[1] << " " << c[2] << " " << c[3] );
+      // WALBERLA_LOG_INFO_ON_ROOT( "vertices: " << c[0] << " " << c[1] << " " << c[2] << " " << c[3] );
 
-      WALBERLA_LOG_INFO_ON_ROOT( "permutation (ilu): " << p1[0] << " " << p1[1] << " " << p1[2] << " " << p1[3] << " (" << s1
-                                                       << ")" );
-      WALBERLA_LOG_INFO_ON_ROOT( "permutation (heu): " << p2[0] << " " << p2[1] << " " << p2[2] << " " << p2[3] << " (" << s2
-                                                       << ")" );
+      // WALBERLA_LOG_INFO_ON_ROOT( "permutation (ilu): " << p1[0] << " " << p1[1] << " " << p1[2] << " " << p1[3] << " (" << s1
+      //                                                  << ")" );
+      // WALBERLA_LOG_INFO_ON_ROOT( "permutation (heu): " << p2[0] << " " << p2[1] << " " << p2[2] << " " << p2[3] << " (" << s2
+      //                                                  << ")" );
 
       return p1;
    }

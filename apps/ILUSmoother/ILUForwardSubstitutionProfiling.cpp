@@ -17,6 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+#define EIGEN_MAX_ALIGN_BYTES 64
 #include <unordered_map>
 
 #include "core/DataTypes.h"
@@ -30,11 +31,11 @@
 #include "hyteg/p1functionspace/P1Function.hpp"
 #include "hyteg/p1functionspace/P1VariableOperator.hpp"
 #include "hyteg/primitivestorage/PrimitiveStorage.hpp"
+#include "hyteg/primitivestorage/SetupPrimitiveStorage.hpp"
 #include "hyteg/primitivestorage/StoragePermutator.hpp"
 
 #include "block_smoother/GSEdgeSmoother.hpp"
 #include "block_smoother/P1LDLTInplaceCellSmoother.hpp"
-#include "utils/create_domain.hpp"
 
 using walberla::real_t;
 using walberla::uint_c;
@@ -62,10 +63,9 @@ int main( int argc, char** argv )
    walberla::Config::BlockHandle parameters = cfg->getOneBlock( "Parameters" );
    parameters.listParameters();
 
-   const uint_t level                = parameters.getParameter< uint_t >( "level" );
-   const uint_t numberOfIterations   = parameters.getParameter< uint_t >( "number_of_iterations" );
-   const bool   useOldImplementation = parameters.getParameter< bool >( "use_old_implementation" );
-   const uint_t numSubdivision       = parameters.getParameter< uint_t >( "number_of_subdivisions" );
+   const uint_t level              = parameters.getParameter< uint_t >( "level" );
+   const uint_t numberOfIterations = parameters.getParameter< uint_t >( "number_of_iterations" );
+   const uint_t numSubdivision     = parameters.getParameter< uint_t >( "number_of_subdivisions" );
 
    const uint_t degx = parameters.getParameter< uint_t >( "degx" );
    const uint_t degy = parameters.getParameter< uint_t >( "degy" );
@@ -82,8 +82,7 @@ int main( int argc, char** argv )
    WALBERLA_LOG_INFO( "num cells (global): " << storage->getNumberOfGlobalCells() );
    WALBERLA_LOG_INFO( "num cells (local): " << storage->getNumberOfLocalCells() );
 
-   using FormType     = forms::p1_div_k_grad_blending_q3;
-   using OperatorType = P1ElementwiseBlendingDivKGradOperator;
+   using FormType = forms::p1_div_k_grad_blending_q3;
 
    std::function< real_t( const Point3D& ) > kappa2d = []( const Point3D& ) { return 1.; };
    std::function< real_t( const Point3D& ) > kappa3d = []( const Point3D& ) { return 1.; };
@@ -93,10 +92,16 @@ int main( int argc, char** argv )
 
    hyteg::P1Function< real_t > src1( "src1", storage, level, level );
    hyteg::P1Function< real_t > src2( "src2", storage, level, level );
+   hyteg::P1Function< real_t > src3( "src3", storage, level, level );
    src1.interpolate( []( const Point3D& p ) { return p[0] + -0.5 * p[1] + 2 * p[2]; }, level, All );
    src2.interpolate( []( const Point3D& p ) { return p[0] + -0.5 * p[1] + 2 * p[2]; }, level, All );
+   src3.interpolate( []( const Point3D& p ) { return p[0] + -0.5 * p[1] + 2 * p[2]; }, level, All );
    hyteg::P1Function< real_t > dst( "dst", storage, level, level );
    dst.interpolate( 0, level, All );
+
+   hyteg::P1Function< real_t > w1( "w1", storage, level, level );
+   hyteg::P1Function< real_t > w2( "w2", storage, level, level );
+   hyteg::P1Function< real_t > w3( "w3", storage, level, level );
 
    hyteg::P1Function< real_t > tmp( "tmp", storage, level, level );
 
@@ -452,6 +457,17 @@ int main( int argc, char** argv )
       }
    }
 
+   std::vector< std::array< real_t, 7 > > stencils_l{};
+   for ( uint_t i = 0; i < levelinfo::num_microvertices_per_cell( level ); i += 1 )
+   {
+      stencils_l.push_back( { walberla::math::realRandom( 0., 1. ),
+                              walberla::math::realRandom( 0., 1. ),
+                              walberla::math::realRandom( 0., 1. ),
+                              walberla::math::realRandom( 0., 1. ),
+                              walberla::math::realRandom( 0., 1. ),
+                              walberla::math::realRandom( 0., 1. ) } );
+   }
+
    {
       ldlt::p1::dim3::LDLTPolynomials ldltPolynomials( { degx, degy, degz }, ldlt::p1::dim3::lowerDirectionsAndCenter );
 
@@ -479,29 +495,12 @@ int main( int argc, char** argv )
       for ( uint_t idx = 0; idx < bnw.size(); idx += 1 )
          ldltPolynomials.getPolynomial( hyteg::stencilDirection::VERTEX_BNW ).setCoefficient( idx, bnw[idx] );
 
+      int version = parameters.getParameter< int >( "version" );
+
       for ( uint_t i = 0; i < numberOfIterations; i += 1 )
       {
-         if ( useOldImplementation )
-         {
-            for ( auto cit : storage->getCells() )
-            {
-               Cell& cell = *cit.second;
-
-               ldlt::p1::dim3::ConstantStencil      opStencilProvider( level, cell, form );
-               ldlt::p1::dim3::LDLTBoundaryStencils boundary;
-
-               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step< hyteg::P1Function< real_t >,
-                                                                        ldlt::p1::dim3::ConstantStencil< FormType >,
-                                                                        true,
-                                                                        false >(
-                   opStencilProvider, ldltPolynomials, boundary, level, cell, src1, tmp, dst );
-
-               if ( cell.getData( src1.getCellDataID() )->getPointer( level )[0] > 1000000 )
-                  WALBERLA_LOG_INFO_ON_ROOT( "op3 " << src1.getMaxMagnitude( level, All, true ) );
-            }
-         }
-
-         if (true)
+         // first try
+         if ( version == 1 )
          {
             for ( auto cit : storage->getCells() )
             {
@@ -511,83 +510,182 @@ int main( int argc, char** argv )
 
                switch ( degx )
                {
-//               case 0:
-//                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 0,
-//                      hyteg::P1Function< real_t >,
-//                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-//                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
-//                  break;
+               case 0:
+                  ldlt::p1::dim3::apply_forward_substitution_new< 0,
+                                                                  hyteg::P1Function< real_t >,
+                                                                  ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src1, w1, dst );
+                  break;
                case 1:
-                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 1,
-                      hyteg::P1Function< real_t >,
-                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  ldlt::p1::dim3::apply_forward_substitution_new< 1,
+                                                                  hyteg::P1Function< real_t >,
+                                                                  ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src1, w1, dst );
                   break;
                case 2:
-                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 2,
-                      hyteg::P1Function< real_t >,
-                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  ldlt::p1::dim3::apply_forward_substitution_new< 2,
+                                                                  hyteg::P1Function< real_t >,
+                                                                  ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src1, w1, dst );
                   break;
                case 3:
-                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 3,
-                      hyteg::P1Function< real_t >,
-                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  ldlt::p1::dim3::apply_forward_substitution_new< 3,
+                                                                  hyteg::P1Function< real_t >,
+                                                                  ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src1, w1, dst );
                   break;
                case 4:
-                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 4,
-                      hyteg::P1Function< real_t >,
-                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  ldlt::p1::dim3::apply_forward_substitution_new< 4,
+                                                                  hyteg::P1Function< real_t >,
+                                                                  ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src1, w1, dst );
                   break;
                case 5:
-                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 5,
-                      hyteg::P1Function< real_t >,
-                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  ldlt::p1::dim3::apply_forward_substitution_new< 5,
+                                                                  hyteg::P1Function< real_t >,
+                                                                  ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src1, w1, dst );
                   break;
                case 6:
-                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 6,
-                      hyteg::P1Function< real_t >,
-                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  ldlt::p1::dim3::apply_forward_substitution_new< 6,
+                                                                  hyteg::P1Function< real_t >,
+                                                                  ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src1, w1, dst );
                   break;
                case 7:
-                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 7,
-                      hyteg::P1Function< real_t >,
-                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  ldlt::p1::dim3::apply_forward_substitution_new< 7,
+                                                                  hyteg::P1Function< real_t >,
+                                                                  ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src1, w1, dst );
                   break;
                case 8:
-                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 8,
-                      hyteg::P1Function< real_t >,
-                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  ldlt::p1::dim3::apply_forward_substitution_new< 8,
+                                                                  hyteg::P1Function< real_t >,
+                                                                  ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src1, w1, dst );
                   break;
                case 9:
-                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 9,
-                      hyteg::P1Function< real_t >,
-                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  ldlt::p1::dim3::apply_forward_substitution_new< 9,
+                                                                  hyteg::P1Function< real_t >,
+                                                                  ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src1, w1, dst );
                   break;
                case 10:
-                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 10,
-                      hyteg::P1Function< real_t >,
-                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  ldlt::p1::dim3::apply_forward_substitution_new< 10,
+                                                                  hyteg::P1Function< real_t >,
+                                                                  ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src1, w1, dst );
                   break;
                case 11:
-                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 11,
-                      hyteg::P1Function< real_t >,
-                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  ldlt::p1::dim3::apply_forward_substitution_new< 11,
+                                                                  hyteg::P1Function< real_t >,
+                                                                  ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src1, w1, dst );
                   break;
                case 12:
-                  ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new< 12,
-                      hyteg::P1Function< real_t >,
-                      ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                      opStencilProviderNew, ldltPolynomials, level, cell, src2, tmp, dst );
+                  ldlt::p1::dim3::apply_forward_substitution_new< 12,
+                                                                  hyteg::P1Function< real_t >,
+                                                                  ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src1, w1, dst );
+                  break;
+               default:
+                  WALBERLA_ABORT( "not implemented" );
+               }
+
+               if ( cell.getData( src1.getCellDataID() )->getPointer( level )[0] > 1000000 )
+                  WALBERLA_LOG_INFO_ON_ROOT( "op3 " << src1.getMaxMagnitude( level, All, true ) );
+            }
+
+            src1.assign( { 1 }, { w1 }, level, All );
+         }
+
+         if ( version == 2 )
+         {
+            for ( auto cit : storage->getCells() )
+            {
+               Cell& cell = *cit.second;
+
+               ldlt::p1::dim3::ConstantStencilNew opStencilProviderNew( level, cell, form, ldlt::p1::dim3::allDirections );
+
+               switch ( degx )
+               {
+               case 0:
+                  ldlt::p1::dim3::apply_forward_substitution_new_2< 0,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, w2, dst );
+                  break;
+               case 1:
+                  ldlt::p1::dim3::apply_forward_substitution_new_2< 1,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, w2, dst );
+                  break;
+               case 2:
+                  ldlt::p1::dim3::apply_forward_substitution_new_2< 2,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, w2, dst );
+                  break;
+               case 3:
+                  ldlt::p1::dim3::apply_forward_substitution_new_2< 3,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, w2, dst );
+                  break;
+               case 4:
+                  ldlt::p1::dim3::apply_forward_substitution_new_2< 4,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, w2, dst );
+                  break;
+               case 5:
+                  ldlt::p1::dim3::apply_forward_substitution_new_2< 5,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, w2, dst );
+                  break;
+               case 6:
+                  ldlt::p1::dim3::apply_forward_substitution_new_2< 6,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, w2, dst );
+                  break;
+               case 7:
+                  ldlt::p1::dim3::apply_forward_substitution_new_2< 7,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, w2, dst );
+                  break;
+               case 8:
+                  ldlt::p1::dim3::apply_forward_substitution_new_2< 8,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, w2, dst );
+                  break;
+               case 9:
+                  ldlt::p1::dim3::apply_forward_substitution_new_2< 9,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, w2, dst );
+                  break;
+               case 10:
+                  ldlt::p1::dim3::apply_forward_substitution_new_2< 10,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, w2, dst );
+                  break;
+               case 11:
+                  ldlt::p1::dim3::apply_forward_substitution_new_2< 11,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, w2, dst );
+                  break;
+               case 12:
+                  ldlt::p1::dim3::apply_forward_substitution_new_2< 12,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src2, w2, dst );
                   break;
                default:
                   WALBERLA_ABORT( "not implemented" );
@@ -596,18 +694,164 @@ int main( int argc, char** argv )
                if ( cell.getData( src2.getCellDataID() )->getPointer( level )[0] > 1000000 )
                   WALBERLA_LOG_INFO_ON_ROOT( "op3 " << src2.getMaxMagnitude( level, All, true ) );
             }
+
+            src2.assign( { 1 }, { w2 }, level, All );
          }
+
+         if ( version == 3 )
+         {
+            for ( auto cit : storage->getCells() )
+            {
+               Cell& cell = *cit.second;
+
+               ldlt::p1::dim3::ConstantStencilNew opStencilProviderNew( level, cell, form, ldlt::p1::dim3::allDirections );
+
+               switch ( degx )
+               {
+               case 0:
+                  ldlt::p1::dim3::apply_forward_substitution_new_3< 0,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src3, w3, dst );
+                  break;
+               case 1:
+                  ldlt::p1::dim3::apply_forward_substitution_new_3< 1,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src3, w3, dst );
+                  break;
+               case 2:
+                  ldlt::p1::dim3::apply_forward_substitution_new_3< 2,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src3, w3, dst );
+                  break;
+               case 3:
+                  ldlt::p1::dim3::apply_forward_substitution_new_3< 3,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src3, w3, dst );
+                  break;
+               case 4:
+                  ldlt::p1::dim3::apply_forward_substitution_new_3< 4,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src3, w3, dst );
+                  break;
+               case 5:
+                  ldlt::p1::dim3::apply_forward_substitution_new_3< 5,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src3, w3, dst );
+                  break;
+               case 6:
+                  ldlt::p1::dim3::apply_forward_substitution_new_3< 6,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src3, w3, dst );
+                  break;
+               case 7:
+                  ldlt::p1::dim3::apply_forward_substitution_new_3< 7,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src3, w3, dst );
+                  break;
+               case 8:
+                  ldlt::p1::dim3::apply_forward_substitution_new_3< 8,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src3, w3, dst );
+                  break;
+               case 9:
+                  ldlt::p1::dim3::apply_forward_substitution_new_3< 9,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src3, w3, dst );
+                  break;
+               case 10:
+                  ldlt::p1::dim3::apply_forward_substitution_new_3< 10,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src3, w3, dst );
+                  break;
+               case 11:
+                  ldlt::p1::dim3::apply_forward_substitution_new_3< 11,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src3, w3, dst );
+                  break;
+               case 12:
+                  ldlt::p1::dim3::apply_forward_substitution_new_3< 12,
+                                                                    hyteg::P1Function< real_t >,
+                                                                    ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, ldltPolynomials, level, cell, src3, w3, dst );
+                  break;
+               default:
+                  WALBERLA_ABORT( "not implemented" );
+               }
+
+               if ( cell.getData( src3.getCellDataID() )->getPointer( level )[0] > 1000000 )
+                  WALBERLA_LOG_INFO_ON_ROOT( "op3 " << src3.getMaxMagnitude( level, All, true ) );
+            }
+
+            src3.assign( { 1 }, { w3 }, level, All );
+         }
+
+         if ( version == 0 )
+         {
+            {
+               for ( auto cit : storage->getCells() )
+               {
+                  Cell& cell = *cit.second;
+
+                  ldlt::p1::dim3::ConstantStencilNew opStencilProviderNew( level, cell, form, ldlt::p1::dim3::allDirections );
+
+                  ldlt::p1::dim3::apply_forward_substitution_matrix< hyteg::P1Function< real_t >,
+                                                                     ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                      opStencilProviderNew, stencils_l, level, cell, src3, tmp, dst );
+
+                  if ( cell.getData( src3.getCellDataID() )->getPointer( level )[0] > 1000000 )
+                     WALBERLA_LOG_INFO_ON_ROOT( "op3 " << tmp.getMaxMagnitude( level, All, true ) );
+               }
+
+               src3.assign( { 1 }, { tmp }, level, All );
+
+            }
+         }
+
+         if ( version == -1 )
+         {
+            for ( auto cit : storage->getCells() )
+            {
+               Cell& cell = *cit.second;
+
+               ldlt::p1::dim3::ConstantStencilNew opStencilProviderNew( level, cell, form, ldlt::p1::dim3::allDirections );
+
+               ldlt::p1::dim3::apply_forward_substitution_const< hyteg::P1Function< real_t >,
+                                                                 ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+                   opStencilProviderNew, stencils_l[0], level, cell, src3, tmp, dst );
+
+               if ( cell.getData( src3.getCellDataID() )->getPointer( level )[0] > 1000000 )
+                  WALBERLA_LOG_INFO_ON_ROOT( "op3 " << tmp.getMaxMagnitude( level, All, true ) );
+            }
+         }
+
+         src3.assign( { 1 }, { tmp }, level, All );
       }
 
-      if ( useOldImplementation )
+      // compare:
       {
-         tmp.assign( { 1, -1 }, { src1, src2 }, level, Inner );
+         tmp.assign( { 1, -1 }, { w1, w2 }, level, Inner );
+         auto resultDot = tmp.dotGlobal( tmp, level, Inner );
+         WALBERLA_LOG_INFO_ON_ROOT( "dot " << resultDot );
+      }
+      {
+         tmp.assign( { 1, -1 }, { w1, w3 }, level, Inner );
          auto resultDot = tmp.dotGlobal( tmp, level, Inner );
          WALBERLA_LOG_INFO_ON_ROOT( "dot " << resultDot );
       }
 
-      // use even newer implementation
-      /*
+      if ( version == 4 )
       {
          Eigen::MatrixXd delta_l( 8 * levelinfo::num_microvertices_per_face( level ), degz + 1 );
          for ( int r = 0; r < 8 * levelinfo::num_microvertices_per_face( level ); r += 1 )
@@ -624,43 +868,13 @@ int main( int argc, char** argv )
 
                // WALBERLA_LOG_INFO_ON_ROOT("?");
 
-               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new2< hyteg::P1Function< real_t >,
-                                                                             ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
+               ldlt::p1::dim3::apply_forward_substitution_new_4< hyteg::P1Function< real_t >,
+                                                                 ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
                    opStencilProviderNew, delta_l, level, cell, src2, tmp, dst );
 
                // WALBERLA_LOG_INFO_ON_ROOT("!");
             }
-         }
-      }
-       */
-      {
-         // std::vector< Eigen::MatrixXd > delta_l;
-         std::vector< Eigen::Matrix<real_t, 7, 8, Eigen::RowMajor>, Eigen::aligned_allocator<Eigen::Matrix<real_t, 7, 8, Eigen::RowMajor>> > delta_l;
-         for ( int r = 0; r < levelinfo::num_microvertices_per_face( level ); r += 1 )
-         {
-            Eigen::Matrix< real_t, 7, 8 > mat( 7, degz + 1 );
-            for ( int r = 0; r < 7; r += 1 )
-               for ( int c = 0; c < degz + 1; c += 1 )
-                  mat( r, c ) = walberla::math::realRandom( -0.01, 0.01 );
-            delta_l.push_back(mat);
-         }
-
-         for ( uint_t i = 0; i < numberOfIterations; i += 1 )
-         {
-            for ( auto cit : storage->getCells() )
-            {
-               Cell& cell = *cit.second;
-
-               ldlt::p1::dim3::ConstantStencilNew opStencilProviderNew( level, cell, form, ldlt::p1::dim3::allDirections );
-
-               // WALBERLA_LOG_INFO_ON_ROOT("?");
-
-               ldlt::p1::dim3::apply_full_surrogate_ilu_smoothing_step_new4< hyteg::P1Function< real_t >,
-                   ldlt::p1::dim3::ConstantStencilNew< FormType, 15 > >(
-                   opStencilProviderNew, delta_l, level, cell, src2, tmp, dst );
-
-               // WALBERLA_LOG_INFO_ON_ROOT("!");
-            }
+            src2.assign( { 1 }, { tmp }, level, All );
          }
       }
    }

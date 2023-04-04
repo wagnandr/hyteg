@@ -1,8 +1,8 @@
 #pragma once
 
-#include "hyteg/LikwidWrapper.hpp"
 #include <Eigen/StdVector>
 
+#include "hyteg/LikwidWrapper.hpp"
 #include "hyteg/polynomial/LSQPInterpolator.hpp"
 #include "hyteg/polynomial/QuadrilateralBasis.hpp"
 #include "hyteg/polynomial/QuadrilateralLSQPInterpolator.hpp"
@@ -192,7 +192,7 @@ void apply_boundary_corrections( uint_t x, uint_t y, uint_t z, uint_t N, std::ma
    }
 }
 
-void apply_boundary_corrections( uint_t x, uint_t y, uint_t z, uint_t N, std::array< real_t, 7 >& stencil )
+void apply_boundary_corrections( uint_t x, uint_t y, uint_t z, uint_t, std::array< real_t, 7 >& stencil )
 {
    const real_t not_on_x = ( x != 1 );
    const real_t not_on_y = ( y != 1 );
@@ -206,18 +206,18 @@ void apply_boundary_corrections( uint_t x, uint_t y, uint_t z, uint_t N, std::ar
    stencil[6] *= not_on_z;
 }
 
-void apply_boundary_corrections( uint_t x, uint_t y, uint_t z, std::array< real_t, 7 >& stencil )
+void apply_boundary_corrections( uint_t x, uint_t y, uint_t z, uint_t, Eigen::Matrix< real_t, 7, 1 >& stencil )
 {
    const real_t not_on_x = ( x != 1 );
    const real_t not_on_y = ( y != 1 );
    const real_t not_on_z = ( z != 1 );
-   stencil[0] *= not_on_x;
-   stencil[1] *= not_on_y;
-   stencil[2] *= not_on_y;
-   stencil[3] *= not_on_x * not_on_z;
-   stencil[4] *= not_on_z;
-   stencil[5] *= not_on_z;
-   stencil[6] *= not_on_z;
+   stencil( 0 ) *= not_on_x;
+   stencil( 1 ) *= not_on_y;
+   stencil( 2 ) *= not_on_y;
+   stencil( 3 ) *= not_on_x * not_on_z;
+   stencil( 4 ) *= not_on_z;
+   stencil( 5 ) *= not_on_z;
+   stencil( 6 ) *= not_on_z;
 }
 
 bool on_cell_boundary( uint_t x, uint_t y, uint_t z, uint_t size_boundary, uint_t num_dof_on_edge )
@@ -284,7 +284,11 @@ void apply_boundary_corrections_on_backward_stencil( uint_t x, uint_t y, uint_t 
    stencil[SD::VERTEX_BE] = apply_boundary_corrections_to_scalar( x - 1, y, z + 1, N, SD::VERTEX_BE, stencil[SD::VERTEX_BE] );
 }
 
-void apply_boundary_corrections_on_backward_stencil( uint_t x, uint_t y, uint_t z, uint_t N, std::array< real_t, 7 >& stencil )
+void apply_boundary_corrections_on_backward_stencil( uint_t x,
+                                                     uint_t y,
+                                                     uint_t z,
+                                                     uint_t /*N*/,
+                                                     std::array< real_t, 7 >& stencil )
 {
    stencil[0] = ( x + 1 != 1 ) * stencil[0];
    // stencil[0] = apply_boundary_corrections_to_scalar( x + 1, y, z, N, SD::VERTEX_W, stencil[0] );
@@ -834,10 +838,10 @@ class PolyStencilNew
 
    void incrementEval( std::array< real_t, num_directions >& stencil )
    {
-      for ( int j = 0; j < degree; j += 1 )
+      for ( int j = 0; j < int( degree ); j += 1 )
          deltas2_.col( j ) += deltas2_.col( j + 1 );
 
-      for ( int i = 0; i < num_directions; i += 1 )
+      for ( int i = 0; i < int( num_directions ); i += 1 )
          stencil[i] = deltas2_( i, 0 );
    };
 
@@ -852,14 +856,33 @@ class PolyStencilNew
       offsetsZ_[idx] = z;
    }
 
+   void getXPolynomial( Eigen::Matrix< real_t, num_directions, degree + 1, Eigen::RowMajor >& mat )
+   {
+      for ( uint_t i = 0; i < int( num_directions ); i += 1 )
+      {
+         const auto& coeffs = polynomials_[i].getEvaluator2D().getPolynomial1D().getCoefficients();
+         for ( uint_t j = 0; j < degree + 1; j += 1 )
+            mat( i, j ) = coeffs[j];
+      }
+   }
+
+    void getXPolynomial( Eigen::Matrix< real_t, num_directions, 1, Eigen::ColMajor >& mat )
+    {
+        for ( uint_t i = 0; i < int( num_directions ); i += 1 )
+        {
+            const auto& coeffs = polynomials_[i].getEvaluator2D().getPolynomial1D().getCoefficients();
+            mat( i ) = coeffs[0];
+        }
+    }
+
  private:
    Eigen::Matrix< real_t, get_matrix_size< num_directions >(), degree + 1 > deltas2_;
+
+   std::array< uint_t, 3 > degrees_;
 
    std::array< SD, num_directions > directions_;
 
    std::vector< QuadrilateralPolynomial3DEvaluator > polynomials_;
-
-   std::array< uint_t, 3 > degrees_;
 
    std::array< real_t, degree + 1 > deltas_;
 
@@ -1065,7 +1088,7 @@ class ConstantStencilNew
 
    void setStartX( real_t, real_t, std::array< real_t, StencilSize >& stencil ) { assemble( stencil ); }
 
-   void incrementEval( std::array< real_t, StencilSize >& stencil ){ /* assemble( stencil ); */ };
+   void incrementEval( std::array< real_t, StencilSize >& /* stencil */ ){ /* assemble( stencil ); */ };
 
    void assemble( std::array< real_t, StencilSize >& stencil ) { stencil = stencil_; }
 
@@ -2278,6 +2301,1134 @@ void apply_full_surrogate_ilu_smoothing_step_new( OpStencilProviderType& opStenc
          }
       }
       LIKWID_MARKER_STOP( "backward:new" );
+   }
+}
+
+template < uint_t degx, typename FunctionType, typename OpStencilProviderType >
+void apply_forward_substitution_new( OpStencilProviderType& opStencilProvider,
+                                     LDLTPolynomials&       polynomials_l,
+                                     uint_t                 level,
+                                     Cell&                  cell,
+                                     const FunctionType&    u_function,
+                                     const FunctionType&    w_function,
+                                     const FunctionType&    b_function )
+{
+   const auto N_edge = levelinfo::num_microvertices_per_edge( level );
+
+   const uint_t lmcs = indexing::layout::linearMacroCellSize( N_edge );
+
+   const auto idx = [N_edge, lmcs]( uint_t x, uint_t y, uint_t z ) {
+      const uint_t widthMinusSlice = N_edge - z;
+      const uint_t sliceOffset     = lmcs - ( ( widthMinusSlice + 2 ) * ( widthMinusSlice + 1 ) * widthMinusSlice ) / 6;
+      const uint_t rowOffset       = y * ( widthMinusSlice + 1 ) - ( ( ( y + 1 ) * ( y ) ) / 2 );
+      return sliceOffset + rowOffset + x;
+      // return indexing::macroCellIndex( N_edge, x, y, z );
+   };
+
+   real_t h = 1. / real_c( levelinfo::num_microedges_per_edge( level ) );
+
+   // unpack u and b
+   auto u = cell.getData( u_function.getCellDataID() )->getPointer( level );
+   auto w = cell.getData( w_function.getCellDataID() )->getPointer( level );
+   auto b = cell.getData( b_function.getCellDataID() )->getPointer( level );
+
+   auto apply_forward_substitution = [idx]( uint_t x, uint_t y, uint_t z, const std::array< real_t, 7 >& l, real_t* w_dat ) {
+      real_t sum = 0;
+
+      // SD::VERTEX_W
+      sum += l[0] * w_dat[idx( x - 1, y, z )];
+      // SD::VERTEX_S
+      sum += l[1] * w_dat[idx( x, y - 1, z )];
+      // SD::VERTEX_SE
+      sum += l[2] * w_dat[idx( x + 1, y - 1, z )];
+      // SD::VERTEX_BNW
+      sum += l[3] * w_dat[idx( x - 1, y + 1, z - 1 )];
+      // SD::VERTEX_BN
+      sum += l[4] * w_dat[idx( x, y + 1, z - 1 )];
+      // SD::VERTEX_BC
+      sum += l[5] * w_dat[idx( x, y, z - 1 )];
+      // SD::VERTEX_BE
+      sum += l[6] * w_dat[idx( x + 1, y, z - 1 )];
+
+      w_dat[idx( x, y, z )] -= sum;
+   };
+
+   auto calc_residual =
+       [idx]( uint_t x, uint_t y, uint_t z, const std::array< real_t, 15 >& a, real_t const* u_d, real_t const* b_d ) {
+          real_t tmp = 0;
+
+          // SD::VERTEX_C
+          real_t u_d_0 = u_d[idx( x, y, z )];
+          // SD::VERTEX_W
+          real_t u_d_1 = u_d[idx( x - 1, y, z )];
+          // SD::VERTEX_S
+          real_t u_d_2 = u_d[idx( x, y - 1, z )];
+          // SD::VERTEX_SE
+          real_t u_d_3 = u_d[idx( x + 1, y - 1, z )];
+          // SD::VERTEX_BNW
+          real_t u_d_4 = u_d[idx( x - 1, y + 1, z - 1 )];
+          // SD::VERTEX_BN
+          real_t u_d_5 = u_d[idx( x, y + 1, z - 1 )];
+          // SD::VERTEX_BC
+          real_t u_d_6 = u_d[idx( x, y, z - 1 )];
+          // SD::VERTEX_BE
+          real_t u_d_7 = u_d[idx( x + 1, y, z - 1 )];
+          // SD::VERTEX_E
+          real_t u_d_8 = u_d[idx( x + 1, y, z )];
+          // SD::VERTEX_N
+          real_t u_d_9 = u_d[idx( x, y + 1, z )];
+          // SD::VERTEX_NW
+          real_t u_d_10 = u_d[idx( x - 1, y + 1, z )];
+          // SD::VERTEX_TSE
+          real_t u_d_11 = u_d[idx( x + 1, y - 1, z + 1 )];
+          // SD::VERTEX_TS
+          real_t u_d_12 = u_d[idx( x, y - 1, z + 1 )];
+          // SD::VERTEX_TC
+          real_t u_d_13 = u_d[idx( x, y, z + 1 )];
+          // SD::VERTEX_TW
+          real_t u_d_14 = u_d[idx( x - 1, y, z + 1 )];
+
+          real_t b_d_0 = b_d[idx( x, y, z )];
+
+          real_t a_0  = a[0];
+          real_t a_1  = a[1];
+          real_t a_2  = a[2];
+          real_t a_3  = a[3];
+          real_t a_4  = a[4];
+          real_t a_5  = a[5];
+          real_t a_6  = a[6];
+          real_t a_7  = a[7];
+          real_t a_8  = a[8];
+          real_t a_9  = a[9];
+          real_t a_10 = a[10];
+          real_t a_11 = a[11];
+          real_t a_12 = a[12];
+          real_t a_13 = a[13];
+          real_t a_14 = a[14];
+
+          // SD::VERTEX_C
+          tmp += a_0 * u_d_0;
+          // SD::VERTEX_W
+          tmp += a_1 * u_d_1;
+          // SD::VERTEX_S
+          tmp += a_2 * u_d_2;
+          // SD::VERTEX_SE
+          tmp += a_3 * u_d_3;
+          // SD::VERTEX_BNW
+          tmp += a_4 * u_d_4;
+          // SD::VERTEX_BN
+          tmp += a_5 * u_d_5;
+          // SD::VERTEX_BC
+          tmp += a_6 * u_d_6;
+          // SD::VERTEX_BE
+          tmp += a_7 * u_d_7;
+          // SD::VERTEX_E
+          tmp += a_8 * u_d_8;
+          // SD::VERTEX_N
+          tmp += a_9 * u_d_9;
+          // SD::VERTEX_NW
+          tmp += a_10 * u_d_10;
+          // SD::VERTEX_TSE
+          tmp += a_11 * u_d_11;
+          // SD::VERTEX_TS
+          tmp += a_12 * u_d_12;
+          // SD::VERTEX_TC
+          tmp += a_13 * u_d_13;
+          // SD::VERTEX_TW
+          tmp += a_14 * u_d_14;
+
+          return b_d_0 - tmp;
+       };
+
+   // ---------------------
+   // forward substitution:
+   // ---------------------
+   {
+      PolyStencilNew< 7, degx > poly_stencil_lower( polynomials_l.getDegrees(), lowerDirections );
+      poly_stencil_lower.setPolynomial( polynomials_l );
+      std::array< real_t, 7 > l_stencil{};
+
+      std::array< real_t, 15 > a_stencil{};
+
+      LIKWID_MARKER_START( "forward:new" );
+      for ( uint_t z = 1; z <= N_edge - 2; z += 1 )
+      {
+         poly_stencil_lower.setZ( h * real_c( z ) );
+         opStencilProvider.setZ( h * real_c( z ) );
+         for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
+         {
+            poly_stencil_lower.setY( h * real_c( y ) );
+            poly_stencil_lower.setStartX( h, h, l_stencil );
+            opStencilProvider.setY( h * real_c( y ) );
+            opStencilProvider.setStartX( h, h, a_stencil );
+            for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
+            {
+               // residual:
+               w[idx( x, y, z )] = calc_residual( x, y, z, a_stencil, u, b );
+               // substitution:
+               apply_boundary_corrections( x, y, z, N_edge, l_stencil );
+               apply_forward_substitution( x, y, z, l_stencil, w );
+               // next stencils
+               opStencilProvider.incrementEval( a_stencil );
+               poly_stencil_lower.incrementEval( l_stencil );
+            }
+         }
+      }
+
+      LIKWID_MARKER_STOP( "forward:new" );
+   }
+}
+
+template < size_t AT >
+struct deglayout {
+   static constexpr Eigen::StorageOptions value(){ return Eigen::RowMajor; }
+};
+
+template <>
+struct deglayout<0> {
+    static constexpr Eigen::StorageOptions value(){ return Eigen::ColMajor; }
+};
+
+
+template < uint_t degx, typename FunctionType, typename OpStencilProviderType >
+void apply_forward_substitution_new_2( OpStencilProviderType& opStencilProvider,
+                                       LDLTPolynomials&       polynomials_l,
+                                       uint_t                 level,
+                                       Cell&                  cell,
+                                       const FunctionType&    u_function,
+                                       const FunctionType&    w_function,
+                                       const FunctionType&    b_function )
+{
+   const auto N_edge = levelinfo::num_microvertices_per_edge( level );
+
+   const uint_t lmcs = indexing::layout::linearMacroCellSize( N_edge );
+
+   const auto idx = [N_edge, lmcs]( uint_t x, uint_t y, uint_t z ) {
+      const uint_t widthMinusSlice = N_edge - z;
+      const uint_t sliceOffset     = lmcs - ( ( widthMinusSlice + 2 ) * ( widthMinusSlice + 1 ) * widthMinusSlice ) / 6;
+      const uint_t rowOffset       = y * ( widthMinusSlice + 1 ) - ( ( ( y + 1 ) * ( y ) ) / 2 );
+      return sliceOffset + rowOffset + x;
+      // return indexing::macroCellIndex( N_edge, x, y, z );
+   };
+
+   real_t h = 1. / real_c( levelinfo::num_microedges_per_edge( level ) );
+
+   // unpack u and b
+   auto u = cell.getData( u_function.getCellDataID() )->getPointer( level );
+   auto w = cell.getData( w_function.getCellDataID() )->getPointer( level );
+   auto b = cell.getData( b_function.getCellDataID() )->getPointer( level );
+
+   const size_t boundarySize = 1;
+
+   auto apply_forward_substitution =
+       [idx]( uint_t x, uint_t y, uint_t z, const Eigen::Matrix< real_t, 7, 1 >& l, real_t* w_dat ) {
+          real_t sum = 0;
+
+          // SD::VERTEX_W
+          sum += l[0] * w_dat[idx( x - 1, y, z )];
+          // SD::VERTEX_S
+          sum += l[1] * w_dat[idx( x, y - 1, z )];
+          // SD::VERTEX_SE
+          sum += l[2] * w_dat[idx( x + 1, y - 1, z )];
+          // SD::VERTEX_BNW
+          sum += l[3] * w_dat[idx( x - 1, y + 1, z - 1 )];
+          // SD::VERTEX_BN
+          sum += l[4] * w_dat[idx( x, y + 1, z - 1 )];
+          // SD::VERTEX_BC
+          sum += l[5] * w_dat[idx( x, y, z - 1 )];
+          // SD::VERTEX_BE
+          sum += l[6] * w_dat[idx( x + 1, y, z - 1 )];
+
+          w_dat[idx( x, y, z )] -= sum;
+       };
+
+   auto calc_residual =
+       [idx]( uint_t x, uint_t y, uint_t z, const std::array< real_t, 15 >& a, real_t const* u_d, real_t const* b_d ) {
+          real_t tmp = 0;
+
+          // SD::VERTEX_C
+          real_t u_d_0 = u_d[idx( x, y, z )];
+          // SD::VERTEX_W
+          real_t u_d_1 = u_d[idx( x - 1, y, z )];
+          // SD::VERTEX_S
+          real_t u_d_2 = u_d[idx( x, y - 1, z )];
+          // SD::VERTEX_SE
+          real_t u_d_3 = u_d[idx( x + 1, y - 1, z )];
+          // SD::VERTEX_BNW
+          real_t u_d_4 = u_d[idx( x - 1, y + 1, z - 1 )];
+          // SD::VERTEX_BN
+          real_t u_d_5 = u_d[idx( x, y + 1, z - 1 )];
+          // SD::VERTEX_BC
+          real_t u_d_6 = u_d[idx( x, y, z - 1 )];
+          // SD::VERTEX_BE
+          real_t u_d_7 = u_d[idx( x + 1, y, z - 1 )];
+          // SD::VERTEX_E
+          real_t u_d_8 = u_d[idx( x + 1, y, z )];
+          // SD::VERTEX_N
+          real_t u_d_9 = u_d[idx( x, y + 1, z )];
+          // SD::VERTEX_NW
+          real_t u_d_10 = u_d[idx( x - 1, y + 1, z )];
+          // SD::VERTEX_TSE
+          real_t u_d_11 = u_d[idx( x + 1, y - 1, z + 1 )];
+          // SD::VERTEX_TS
+          real_t u_d_12 = u_d[idx( x, y - 1, z + 1 )];
+          // SD::VERTEX_TC
+          real_t u_d_13 = u_d[idx( x, y, z + 1 )];
+          // SD::VERTEX_TW
+          real_t u_d_14 = u_d[idx( x - 1, y, z + 1 )];
+
+          real_t b_d_0 = b_d[idx( x, y, z )];
+
+          real_t a_0  = a[0];
+          real_t a_1  = a[1];
+          real_t a_2  = a[2];
+          real_t a_3  = a[3];
+          real_t a_4  = a[4];
+          real_t a_5  = a[5];
+          real_t a_6  = a[6];
+          real_t a_7  = a[7];
+          real_t a_8  = a[8];
+          real_t a_9  = a[9];
+          real_t a_10 = a[10];
+          real_t a_11 = a[11];
+          real_t a_12 = a[12];
+          real_t a_13 = a[13];
+          real_t a_14 = a[14];
+
+          // SD::VERTEX_C
+          tmp += a_0 * u_d_0;
+          // SD::VERTEX_W
+          tmp += a_1 * u_d_1;
+          // SD::VERTEX_S
+          tmp += a_2 * u_d_2;
+          // SD::VERTEX_SE
+          tmp += a_3 * u_d_3;
+          // SD::VERTEX_BNW
+          tmp += a_4 * u_d_4;
+          // SD::VERTEX_BN
+          tmp += a_5 * u_d_5;
+          // SD::VERTEX_BC
+          tmp += a_6 * u_d_6;
+          // SD::VERTEX_BE
+          tmp += a_7 * u_d_7;
+          // SD::VERTEX_E
+          tmp += a_8 * u_d_8;
+          // SD::VERTEX_N
+          tmp += a_9 * u_d_9;
+          // SD::VERTEX_NW
+          tmp += a_10 * u_d_10;
+          // SD::VERTEX_TSE
+          tmp += a_11 * u_d_11;
+          // SD::VERTEX_TS
+          tmp += a_12 * u_d_12;
+          // SD::VERTEX_TC
+          tmp += a_13 * u_d_13;
+          // SD::VERTEX_TW
+          tmp += a_14 * u_d_14;
+
+          return b_d_0 - tmp;
+       };
+
+   std::vector< Eigen::Matrix< real_t, degx + 1, 1 >, Eigen::aligned_allocator<Eigen::Matrix<real_t, degx + 1, 1> >>  xh_power;
+
+   for ( int x = 0; x <= int( N_edge ) - 2; x += 1 )
+   {
+      const real_t xh  = real_c( x ) * h;
+      Eigen::Matrix< real_t, degx + 1, 1 > v;
+      v( 0 ) = 1.;
+      for ( int i = 1; i < degx + 1; i += 1 )
+         v( i ) = v( i - 1 ) * xh;
+      xh_power.push_back(v);
+   }
+
+   // ---------------------
+   // forward substitution:
+   // ---------------------
+   {
+      PolyStencilNew< 7, degx > poly_stencil_lower( polynomials_l.getDegrees(), lowerDirections );
+      poly_stencil_lower.setPolynomial( polynomials_l );
+
+      std::array< real_t, 15 > a_stencil{};
+
+      constexpr auto layout = degx == 0 ? Eigen::ColMajor : Eigen::RowMajor;
+      Eigen::Matrix< real_t, 7, degx + 1, layout > mat( degx + 1, N_edge - 2 + 1 );
+
+      LIKWID_MARKER_START( "forward:new:2" );
+      for ( uint_t z = 1; z <= N_edge - 2; z += 1 )
+      {
+         poly_stencil_lower.setZ( h * real_c( z ) );
+         opStencilProvider.setZ( h * real_c( z ) );
+         for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
+         {
+            poly_stencil_lower.setY( h * real_c( y ) );
+            poly_stencil_lower.getXPolynomial( mat );
+
+            opStencilProvider.setY( h * real_c( y ) );
+            opStencilProvider.setStartX( h, h, a_stencil );
+
+            for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
+            {
+               // residual:
+               w[idx( x, y, z )] = calc_residual( x, y, z, a_stencil, u, b );
+
+               Eigen::Matrix< real_t, 7, 1 > l_stencil = mat * xh_power[x];
+
+               // substitution:
+               apply_boundary_corrections( x, y, z, N_edge, l_stencil );
+               apply_forward_substitution( x, y, z, l_stencil, w );
+               // next stencils
+               opStencilProvider.incrementEval( a_stencil );
+            }
+         }
+      }
+
+      LIKWID_MARKER_STOP( "forward:new:2" );
+   }
+}
+
+template < uint_t degx, typename FunctionType, typename OpStencilProviderType >
+void apply_forward_substitution_new_3( OpStencilProviderType& opStencilProvider,
+                                       LDLTPolynomials&       polynomials_l,
+                                       uint_t                 level,
+                                       Cell&                  cell,
+                                       const FunctionType&    u_function,
+                                       const FunctionType&    w_function,
+                                       const FunctionType&    b_function )
+{
+   const auto N_edge = levelinfo::num_microvertices_per_edge( level );
+
+   const uint_t lmcs = indexing::layout::linearMacroCellSize( N_edge );
+
+   const auto idx = [N_edge, lmcs]( uint_t x, uint_t y, uint_t z ) {
+      const uint_t widthMinusSlice = N_edge - z;
+      const uint_t sliceOffset     = lmcs - ( ( widthMinusSlice + 2 ) * ( widthMinusSlice + 1 ) * widthMinusSlice ) / 6;
+      const uint_t rowOffset       = y * ( widthMinusSlice + 1 ) - ( ( ( y + 1 ) * ( y ) ) / 2 );
+      return sliceOffset + rowOffset + x;
+      // return indexing::macroCellIndex( N_edge, x, y, z );
+   };
+
+   real_t h = 1. / real_c( levelinfo::num_microedges_per_edge( level ) );
+
+   // unpack u and b
+   auto u = cell.getData( u_function.getCellDataID() )->getPointer( level );
+   auto w = cell.getData( w_function.getCellDataID() )->getPointer( level );
+   auto b = cell.getData( b_function.getCellDataID() )->getPointer( level );
+
+   const size_t boundarySize = 1;
+
+   auto apply_forward_substitution =
+       [idx]( uint_t x, uint_t y, uint_t z, const Eigen::Matrix< real_t, 7, 1 >& l, real_t* w_dat ) {
+          real_t sum = 0;
+
+          // SD::VERTEX_W
+          sum += l[0] * w_dat[idx( x - 1, y, z )];
+          // SD::VERTEX_S
+          sum += l[1] * w_dat[idx( x, y - 1, z )];
+          // SD::VERTEX_SE
+          sum += l[2] * w_dat[idx( x + 1, y - 1, z )];
+          // SD::VERTEX_BNW
+          sum += l[3] * w_dat[idx( x - 1, y + 1, z - 1 )];
+          // SD::VERTEX_BN
+          sum += l[4] * w_dat[idx( x, y + 1, z - 1 )];
+          // SD::VERTEX_BC
+          sum += l[5] * w_dat[idx( x, y, z - 1 )];
+          // SD::VERTEX_BE
+          sum += l[6] * w_dat[idx( x + 1, y, z - 1 )];
+
+          w_dat[idx( x, y, z )] -= sum;
+       };
+
+   auto calc_residual =
+       [idx]( uint_t x, uint_t y, uint_t z, const std::array< real_t, 15 >& a, real_t const* u_d, real_t const* b_d ) {
+          real_t tmp = 0;
+
+          // SD::VERTEX_C
+          real_t u_d_0 = u_d[idx( x, y, z )];
+          // SD::VERTEX_W
+          real_t u_d_1 = u_d[idx( x - 1, y, z )];
+          // SD::VERTEX_S
+          real_t u_d_2 = u_d[idx( x, y - 1, z )];
+          // SD::VERTEX_SE
+          real_t u_d_3 = u_d[idx( x + 1, y - 1, z )];
+          // SD::VERTEX_BNW
+          real_t u_d_4 = u_d[idx( x - 1, y + 1, z - 1 )];
+          // SD::VERTEX_BN
+          real_t u_d_5 = u_d[idx( x, y + 1, z - 1 )];
+          // SD::VERTEX_BC
+          real_t u_d_6 = u_d[idx( x, y, z - 1 )];
+          // SD::VERTEX_BE
+          real_t u_d_7 = u_d[idx( x + 1, y, z - 1 )];
+          // SD::VERTEX_E
+          real_t u_d_8 = u_d[idx( x + 1, y, z )];
+          // SD::VERTEX_N
+          real_t u_d_9 = u_d[idx( x, y + 1, z )];
+          // SD::VERTEX_NW
+          real_t u_d_10 = u_d[idx( x - 1, y + 1, z )];
+          // SD::VERTEX_TSE
+          real_t u_d_11 = u_d[idx( x + 1, y - 1, z + 1 )];
+          // SD::VERTEX_TS
+          real_t u_d_12 = u_d[idx( x, y - 1, z + 1 )];
+          // SD::VERTEX_TC
+          real_t u_d_13 = u_d[idx( x, y, z + 1 )];
+          // SD::VERTEX_TW
+          real_t u_d_14 = u_d[idx( x - 1, y, z + 1 )];
+
+          real_t b_d_0 = b_d[idx( x, y, z )];
+
+          real_t a_0  = a[0];
+          real_t a_1  = a[1];
+          real_t a_2  = a[2];
+          real_t a_3  = a[3];
+          real_t a_4  = a[4];
+          real_t a_5  = a[5];
+          real_t a_6  = a[6];
+          real_t a_7  = a[7];
+          real_t a_8  = a[8];
+          real_t a_9  = a[9];
+          real_t a_10 = a[10];
+          real_t a_11 = a[11];
+          real_t a_12 = a[12];
+          real_t a_13 = a[13];
+          real_t a_14 = a[14];
+
+          // SD::VERTEX_C
+          tmp += a_0 * u_d_0;
+          // SD::VERTEX_W
+          tmp += a_1 * u_d_1;
+          // SD::VERTEX_S
+          tmp += a_2 * u_d_2;
+          // SD::VERTEX_SE
+          tmp += a_3 * u_d_3;
+          // SD::VERTEX_BNW
+          tmp += a_4 * u_d_4;
+          // SD::VERTEX_BN
+          tmp += a_5 * u_d_5;
+          // SD::VERTEX_BC
+          tmp += a_6 * u_d_6;
+          // SD::VERTEX_BE
+          tmp += a_7 * u_d_7;
+          // SD::VERTEX_E
+          tmp += a_8 * u_d_8;
+          // SD::VERTEX_N
+          tmp += a_9 * u_d_9;
+          // SD::VERTEX_NW
+          tmp += a_10 * u_d_10;
+          // SD::VERTEX_TSE
+          tmp += a_11 * u_d_11;
+          // SD::VERTEX_TS
+          tmp += a_12 * u_d_12;
+          // SD::VERTEX_TC
+          tmp += a_13 * u_d_13;
+          // SD::VERTEX_TW
+          tmp += a_14 * u_d_14;
+
+          return b_d_0 - tmp;
+       };
+
+   Eigen::Matrix< real_t, degx + 1, Eigen::Dynamic > xh_power( degx + 1, N_edge - 2 + 1 );
+
+   for ( int x = 0; x <= int( N_edge ) - 2; x += 1 )
+   {
+      const real_t xh  = real_c( x ) * h;
+      xh_power( 0, x ) = 1.;
+      for ( int i = 1; i < degx + 1; i += 1 )
+         xh_power( i, x ) = xh_power( i - 1, x ) * xh;
+   }
+
+   Eigen::Matrix< real_t, 7, Eigen::Dynamic > l_stencils( 7, N_edge - 2 + 1 );
+
+   // ---------------------
+   // forward substitution:
+   // ---------------------
+   {
+      PolyStencilNew< 7, degx > poly_stencil_lower( polynomials_l.getDegrees(), lowerDirections );
+      poly_stencil_lower.setPolynomial( polynomials_l );
+
+      std::array< real_t, 15 > a_stencil{};
+
+      constexpr auto layout = degx == 0 ? Eigen::ColMajor : Eigen::RowMajor;
+      Eigen::Matrix< real_t, 7, degx + 1, layout > mat( degx + 1, N_edge - 2 + 1 );
+
+      LIKWID_MARKER_START( "forward:new:3" );
+      for ( uint_t z = 1; z <= N_edge - 2; z += 1 )
+      {
+         poly_stencil_lower.setZ( h * real_c( z ) );
+         opStencilProvider.setZ( h * real_c( z ) );
+         for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
+         {
+            poly_stencil_lower.setY( h * real_c( y ) );
+            poly_stencil_lower.getXPolynomial( mat );
+
+            opStencilProvider.setY( h * real_c( y ) );
+            opStencilProvider.setStartX( h, h, a_stencil );
+
+            const int num_stencils                              = N_edge - 2 - z - y + 1;
+            l_stencils.block( 0, 1, 7, num_stencils ).noalias() = mat * xh_power.block( 0, 1, degx + 1, num_stencils );
+
+            for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
+            {
+               // residual:
+               w[idx( x, y, z )] = calc_residual( x, y, z, a_stencil, u, b );
+
+               Eigen::Matrix< real_t, 7, 1 > l_stencil = l_stencils.col( x );
+
+               // substitution:
+               apply_boundary_corrections( x, y, z, N_edge, l_stencil );
+               apply_forward_substitution( x, y, z, l_stencil, w );
+               // next stencils
+               opStencilProvider.incrementEval( a_stencil );
+            }
+         }
+      }
+
+      LIKWID_MARKER_STOP( "forward:new:3" );
+   }
+}
+
+template < typename FunctionType, typename OpStencilProviderType >
+void apply_forward_substitution_matrix( OpStencilProviderType&                        opStencilProvider,
+                                        const std::vector< std::array< real_t, 7 > >& l_stencils,
+                                        uint_t                                        level,
+                                        Cell&                                         cell,
+                                        const FunctionType&                           u_function,
+                                        const FunctionType&                           w_function,
+                                        const FunctionType&                           b_function )
+{
+   const auto N_edge = levelinfo::num_microvertices_per_edge( level );
+
+   const uint_t lmcs = indexing::layout::linearMacroCellSize( N_edge );
+
+   const auto idx = [N_edge, lmcs]( uint_t x, uint_t y, uint_t z ) {
+      const uint_t widthMinusSlice = N_edge - z;
+      const uint_t sliceOffset     = lmcs - ( ( widthMinusSlice + 2 ) * ( widthMinusSlice + 1 ) * widthMinusSlice ) / 6;
+      const uint_t rowOffset       = y * ( widthMinusSlice + 1 ) - ( ( ( y + 1 ) * ( y ) ) / 2 );
+      return sliceOffset + rowOffset + x;
+      // return indexing::macroCellIndex( N_edge, x, y, z );
+   };
+
+   real_t h = 1. / real_c( levelinfo::num_microedges_per_edge( level ) );
+
+   // unpack u and b
+   auto u = cell.getData( u_function.getCellDataID() )->getPointer( level );
+   auto w = cell.getData( w_function.getCellDataID() )->getPointer( level );
+   auto b = cell.getData( b_function.getCellDataID() )->getPointer( level );
+
+   const size_t boundarySize = 1;
+
+   auto apply_forward_substitution = [idx]( uint_t x, uint_t y, uint_t z, const std::array< real_t, 7 >& l, real_t* w_dat ) {
+      real_t sum = 0;
+
+      // SD::VERTEX_W
+      sum += l[0] * w_dat[idx( x - 1, y, z )];
+      // SD::VERTEX_S
+      sum += l[1] * w_dat[idx( x, y - 1, z )];
+      // SD::VERTEX_SE
+      sum += l[2] * w_dat[idx( x + 1, y - 1, z )];
+      // SD::VERTEX_BNW
+      sum += l[3] * w_dat[idx( x - 1, y + 1, z - 1 )];
+      // SD::VERTEX_BN
+      sum += l[4] * w_dat[idx( x, y + 1, z - 1 )];
+      // SD::VERTEX_BC
+      sum += l[5] * w_dat[idx( x, y, z - 1 )];
+      // SD::VERTEX_BE
+      sum += l[6] * w_dat[idx( x + 1, y, z - 1 )];
+
+      w_dat[idx( x, y, z )] -= sum;
+   };
+
+   auto calc_residual =
+       [idx]( uint_t x, uint_t y, uint_t z, const std::array< real_t, 15 >& a, real_t const* u_d, real_t const* b_d ) {
+          real_t tmp = 0;
+
+          // SD::VERTEX_C
+          real_t u_d_0 = u_d[idx( x, y, z )];
+          // SD::VERTEX_W
+          real_t u_d_1 = u_d[idx( x - 1, y, z )];
+          // SD::VERTEX_S
+          real_t u_d_2 = u_d[idx( x, y - 1, z )];
+          // SD::VERTEX_SE
+          real_t u_d_3 = u_d[idx( x + 1, y - 1, z )];
+          // SD::VERTEX_BNW
+          real_t u_d_4 = u_d[idx( x - 1, y + 1, z - 1 )];
+          // SD::VERTEX_BN
+          real_t u_d_5 = u_d[idx( x, y + 1, z - 1 )];
+          // SD::VERTEX_BC
+          real_t u_d_6 = u_d[idx( x, y, z - 1 )];
+          // SD::VERTEX_BE
+          real_t u_d_7 = u_d[idx( x + 1, y, z - 1 )];
+          // SD::VERTEX_E
+          real_t u_d_8 = u_d[idx( x + 1, y, z )];
+          // SD::VERTEX_N
+          real_t u_d_9 = u_d[idx( x, y + 1, z )];
+          // SD::VERTEX_NW
+          real_t u_d_10 = u_d[idx( x - 1, y + 1, z )];
+          // SD::VERTEX_TSE
+          real_t u_d_11 = u_d[idx( x + 1, y - 1, z + 1 )];
+          // SD::VERTEX_TS
+          real_t u_d_12 = u_d[idx( x, y - 1, z + 1 )];
+          // SD::VERTEX_TC
+          real_t u_d_13 = u_d[idx( x, y, z + 1 )];
+          // SD::VERTEX_TW
+          real_t u_d_14 = u_d[idx( x - 1, y, z + 1 )];
+
+          real_t b_d_0 = b_d[idx( x, y, z )];
+
+          real_t a_0  = a[0];
+          real_t a_1  = a[1];
+          real_t a_2  = a[2];
+          real_t a_3  = a[3];
+          real_t a_4  = a[4];
+          real_t a_5  = a[5];
+          real_t a_6  = a[6];
+          real_t a_7  = a[7];
+          real_t a_8  = a[8];
+          real_t a_9  = a[9];
+          real_t a_10 = a[10];
+          real_t a_11 = a[11];
+          real_t a_12 = a[12];
+          real_t a_13 = a[13];
+          real_t a_14 = a[14];
+
+          // SD::VERTEX_C
+          tmp += a_0 * u_d_0;
+          // SD::VERTEX_W
+          tmp += a_1 * u_d_1;
+          // SD::VERTEX_S
+          tmp += a_2 * u_d_2;
+          // SD::VERTEX_SE
+          tmp += a_3 * u_d_3;
+          // SD::VERTEX_BNW
+          tmp += a_4 * u_d_4;
+          // SD::VERTEX_BN
+          tmp += a_5 * u_d_5;
+          // SD::VERTEX_BC
+          tmp += a_6 * u_d_6;
+          // SD::VERTEX_BE
+          tmp += a_7 * u_d_7;
+          // SD::VERTEX_E
+          tmp += a_8 * u_d_8;
+          // SD::VERTEX_N
+          tmp += a_9 * u_d_9;
+          // SD::VERTEX_NW
+          tmp += a_10 * u_d_10;
+          // SD::VERTEX_TSE
+          tmp += a_11 * u_d_11;
+          // SD::VERTEX_TS
+          tmp += a_12 * u_d_12;
+          // SD::VERTEX_TC
+          tmp += a_13 * u_d_13;
+          // SD::VERTEX_TW
+          tmp += a_14 * u_d_14;
+
+          return b_d_0 - tmp;
+       };
+
+   // ---------------------
+   // forward substitution:
+   // ---------------------
+   {
+      std::array< real_t, 15 > a_stencil{};
+
+      LIKWID_MARKER_START( "forward:matrix" );
+      for ( uint_t z = 1; z <= N_edge - 2; z += 1 )
+      {
+         opStencilProvider.setZ( h * real_c( z ) );
+         for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
+         {
+            opStencilProvider.setY( h * real_c( y ) );
+            opStencilProvider.setStartX( h, h, a_stencil );
+
+            for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
+            {
+               // residual:
+               w[idx( x, y, z )] = calc_residual( x, y, z, a_stencil, u, b );
+
+               const std::array< real_t, 7 >& l_stencil = l_stencils[idx( x, y, z )];
+
+               // substitution:
+               apply_forward_substitution( x, y, z, l_stencil, w );
+               // next stencils
+               opStencilProvider.incrementEval( a_stencil );
+            }
+         }
+      }
+
+      LIKWID_MARKER_STOP( "forward:matrix" );
+   }
+}
+
+template < typename FunctionType, typename OpStencilProviderType >
+void apply_forward_substitution_const( OpStencilProviderType&         opStencilProvider,
+                                       const std::array< real_t, 7 >& l_stencil,
+                                       uint_t                         level,
+                                       Cell&                          cell,
+                                       const FunctionType&            u_function,
+                                       const FunctionType&            w_function,
+                                       const FunctionType&            b_function )
+{
+   const auto N_edge = levelinfo::num_microvertices_per_edge( level );
+
+   const uint_t lmcs = indexing::layout::linearMacroCellSize( N_edge );
+
+   const auto idx = [N_edge, lmcs]( uint_t x, uint_t y, uint_t z ) {
+      const uint_t widthMinusSlice = N_edge - z;
+      const uint_t sliceOffset     = lmcs - ( ( widthMinusSlice + 2 ) * ( widthMinusSlice + 1 ) * widthMinusSlice ) / 6;
+      const uint_t rowOffset       = y * ( widthMinusSlice + 1 ) - ( ( ( y + 1 ) * ( y ) ) / 2 );
+      return sliceOffset + rowOffset + x;
+      // return indexing::macroCellIndex( N_edge, x, y, z );
+   };
+
+   real_t h = 1. / real_c( levelinfo::num_microedges_per_edge( level ) );
+
+   // unpack u and b
+   auto u = cell.getData( u_function.getCellDataID() )->getPointer( level );
+   auto w = cell.getData( w_function.getCellDataID() )->getPointer( level );
+   auto b = cell.getData( b_function.getCellDataID() )->getPointer( level );
+
+   const size_t boundarySize = 1;
+
+   auto apply_forward_substitution = [idx]( uint_t x, uint_t y, uint_t z, const std::array< real_t, 7 >& l, real_t* w_dat ) {
+      real_t sum = 0;
+
+      // SD::VERTEX_W
+      sum += l[0] * w_dat[idx( x - 1, y, z )];
+      // SD::VERTEX_S
+      sum += l[1] * w_dat[idx( x, y - 1, z )];
+      // SD::VERTEX_SE
+      sum += l[2] * w_dat[idx( x + 1, y - 1, z )];
+      // SD::VERTEX_BNW
+      sum += l[3] * w_dat[idx( x - 1, y + 1, z - 1 )];
+      // SD::VERTEX_BN
+      sum += l[4] * w_dat[idx( x, y + 1, z - 1 )];
+      // SD::VERTEX_BC
+      sum += l[5] * w_dat[idx( x, y, z - 1 )];
+      // SD::VERTEX_BE
+      sum += l[6] * w_dat[idx( x + 1, y, z - 1 )];
+
+      w_dat[idx( x, y, z )] -= sum;
+   };
+
+   auto calc_residual =
+       [idx]( uint_t x, uint_t y, uint_t z, const std::array< real_t, 15 >& a, real_t const* u_d, real_t const* b_d ) {
+          real_t tmp = 0;
+
+          // SD::VERTEX_C
+          real_t u_d_0 = u_d[idx( x, y, z )];
+          // SD::VERTEX_W
+          real_t u_d_1 = u_d[idx( x - 1, y, z )];
+          // SD::VERTEX_S
+          real_t u_d_2 = u_d[idx( x, y - 1, z )];
+          // SD::VERTEX_SE
+          real_t u_d_3 = u_d[idx( x + 1, y - 1, z )];
+          // SD::VERTEX_BNW
+          real_t u_d_4 = u_d[idx( x - 1, y + 1, z - 1 )];
+          // SD::VERTEX_BN
+          real_t u_d_5 = u_d[idx( x, y + 1, z - 1 )];
+          // SD::VERTEX_BC
+          real_t u_d_6 = u_d[idx( x, y, z - 1 )];
+          // SD::VERTEX_BE
+          real_t u_d_7 = u_d[idx( x + 1, y, z - 1 )];
+          // SD::VERTEX_E
+          real_t u_d_8 = u_d[idx( x + 1, y, z )];
+          // SD::VERTEX_N
+          real_t u_d_9 = u_d[idx( x, y + 1, z )];
+          // SD::VERTEX_NW
+          real_t u_d_10 = u_d[idx( x - 1, y + 1, z )];
+          // SD::VERTEX_TSE
+          real_t u_d_11 = u_d[idx( x + 1, y - 1, z + 1 )];
+          // SD::VERTEX_TS
+          real_t u_d_12 = u_d[idx( x, y - 1, z + 1 )];
+          // SD::VERTEX_TC
+          real_t u_d_13 = u_d[idx( x, y, z + 1 )];
+          // SD::VERTEX_TW
+          real_t u_d_14 = u_d[idx( x - 1, y, z + 1 )];
+
+          real_t b_d_0 = b_d[idx( x, y, z )];
+
+          real_t a_0  = a[0];
+          real_t a_1  = a[1];
+          real_t a_2  = a[2];
+          real_t a_3  = a[3];
+          real_t a_4  = a[4];
+          real_t a_5  = a[5];
+          real_t a_6  = a[6];
+          real_t a_7  = a[7];
+          real_t a_8  = a[8];
+          real_t a_9  = a[9];
+          real_t a_10 = a[10];
+          real_t a_11 = a[11];
+          real_t a_12 = a[12];
+          real_t a_13 = a[13];
+          real_t a_14 = a[14];
+
+          // SD::VERTEX_C
+          tmp += a_0 * u_d_0;
+          // SD::VERTEX_W
+          tmp += a_1 * u_d_1;
+          // SD::VERTEX_S
+          tmp += a_2 * u_d_2;
+          // SD::VERTEX_SE
+          tmp += a_3 * u_d_3;
+          // SD::VERTEX_BNW
+          tmp += a_4 * u_d_4;
+          // SD::VERTEX_BN
+          tmp += a_5 * u_d_5;
+          // SD::VERTEX_BC
+          tmp += a_6 * u_d_6;
+          // SD::VERTEX_BE
+          tmp += a_7 * u_d_7;
+          // SD::VERTEX_E
+          tmp += a_8 * u_d_8;
+          // SD::VERTEX_N
+          tmp += a_9 * u_d_9;
+          // SD::VERTEX_NW
+          tmp += a_10 * u_d_10;
+          // SD::VERTEX_TSE
+          tmp += a_11 * u_d_11;
+          // SD::VERTEX_TS
+          tmp += a_12 * u_d_12;
+          // SD::VERTEX_TC
+          tmp += a_13 * u_d_13;
+          // SD::VERTEX_TW
+          tmp += a_14 * u_d_14;
+
+          return b_d_0 - tmp;
+       };
+
+   // ---------------------
+   // forward substitution:
+   // ---------------------
+   {
+      std::array< real_t, 15 > a_stencil{};
+
+      LIKWID_MARKER_START( "forward:const" );
+      for ( uint_t z = 1; z <= N_edge - 2; z += 1 )
+      {
+         opStencilProvider.setZ( h * real_c( z ) );
+         for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
+         {
+            opStencilProvider.setY( h * real_c( y ) );
+            opStencilProvider.setStartX( h, h, a_stencil );
+
+            for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
+            {
+               // residual:
+               w[idx( x, y, z )] = calc_residual( x, y, z, a_stencil, u, b );
+
+               // substitution:
+               apply_forward_substitution( x, y, z, l_stencil, w );
+               // next stencils
+               opStencilProvider.incrementEval( a_stencil );
+            }
+         }
+      }
+
+      LIKWID_MARKER_STOP( "forward:const" );
+   }
+}
+
+template < typename FunctionType, typename OpStencilProviderType >
+void apply_forward_substitution_new_4( OpStencilProviderType& opStencilProvider,
+                                                   Eigen::Matrix< real_t, Eigen::Dynamic, Eigen::Dynamic >& delta_l,
+                                                   uint_t                 level,
+                                                   Cell&                  cell,
+                                                   const FunctionType&    u_function,
+                                                   const FunctionType&    w_function,
+                                                   const FunctionType&    b_function )
+{
+   const auto N_edge = levelinfo::num_microvertices_per_edge( level );
+
+   const uint_t lmcs = indexing::layout::linearMacroCellSize( N_edge );
+
+   const auto idx = [N_edge, lmcs]( uint_t x, uint_t y, uint_t z ) {
+      const uint_t widthMinusSlice = N_edge - z;
+      const uint_t sliceOffset     = lmcs - ( ( widthMinusSlice + 2 ) * ( widthMinusSlice + 1 ) * widthMinusSlice ) / 6;
+      const uint_t rowOffset       = y * ( widthMinusSlice + 1 ) - ( ( ( y + 1 ) * ( y ) ) / 2 );
+      return sliceOffset + rowOffset + x;
+      // return indexing::macroCellIndex( N_edge, x, y, z );
+   };
+
+   const auto idxf = [N_edge]( uint_t x, uint_t y) {
+      const uint_t rowOffset = y * ( N_edge+ 1 ) - ( ( ( y + 1 ) * ( y ) ) / 2 );
+      return rowOffset + x;
+   };
+
+   real_t h = 1. / real_c( levelinfo::num_microedges_per_edge( level ) );
+
+   // unpack u and b
+   auto u = cell.getData( u_function.getCellDataID() )->getPointer( level );
+   auto w = cell.getData( w_function.getCellDataID() )->getPointer( level );
+   auto b = cell.getData( b_function.getCellDataID() )->getPointer( level );
+
+
+   auto apply_forward_substitution = [idx,idxf,delta_l]( uint_t x, uint_t y, uint_t z, real_t* w_dat ) {
+
+      const uint_t base = idxf( x, y )*8;
+      const real_t l_0 = delta_l(base + 0, 0);
+      const real_t l_1 = delta_l(base + 1, 0);
+      const real_t l_2 = delta_l(base + 2, 0);
+      const real_t l_3 = delta_l(base + 3, 0);
+      const real_t l_4 = delta_l(base + 4, 0);
+      const real_t l_5 = delta_l(base + 5, 0);
+      const real_t l_6 = delta_l(base + 6, 0);
+
+      real_t sum = 0;
+      // SD::VERTEX_W
+      sum += l_0 * w_dat[idx( x - 1, y, z )];
+      // SD::VERTEX_S
+      sum += l_1 * w_dat[idx( x, y - 1, z )];
+      // SD::VERTEX_SE
+      sum += l_2 * w_dat[idx( x + 1, y - 1, z )];
+      // SD::VERTEX_BNW
+      sum += l_3 * w_dat[idx( x - 1, y + 1, z - 1 )];
+      // SD::VERTEX_BN
+      sum += l_4 * w_dat[idx( x, y + 1, z - 1 )];
+      // SD::VERTEX_BC
+      sum += l_5 * w_dat[idx( x, y, z - 1 )];
+      // SD::VERTEX_BE
+      sum += l_6 * w_dat[idx( x + 1, y, z - 1 )];
+
+      w_dat[idx( x, y, z )] -= sum;
+   };
+
+   auto calc_residual =
+       [idx]( uint_t x, uint_t y, uint_t z, const std::array< real_t, 15 >& a, real_t const* u_d, real_t const* b_d ) {
+          real_t tmp = 0;
+
+          // SD::VERTEX_C
+          real_t u_d_0 = u_d[idx( x, y, z )];
+          // SD::VERTEX_W
+          real_t u_d_1 = u_d[idx( x - 1, y, z )];
+          // SD::VERTEX_S
+          real_t u_d_2 = u_d[idx( x, y - 1, z )];
+          // SD::VERTEX_SE
+          real_t u_d_3 = u_d[idx( x + 1, y - 1, z )];
+          // SD::VERTEX_BNW
+          real_t u_d_4 = u_d[idx( x - 1, y + 1, z - 1 )];
+          // SD::VERTEX_BN
+          real_t u_d_5 = u_d[idx( x, y + 1, z - 1 )];
+          // SD::VERTEX_BC
+          real_t u_d_6 = u_d[idx( x, y, z - 1 )];
+          // SD::VERTEX_BE
+          real_t u_d_7 = u_d[idx( x + 1, y, z - 1 )];
+          // SD::VERTEX_E
+          real_t u_d_8 = u_d[idx( x + 1, y, z )];
+          // SD::VERTEX_N
+          real_t u_d_9 = u_d[idx( x, y + 1, z )];
+          // SD::VERTEX_NW
+          real_t u_d_10 = u_d[idx( x - 1, y + 1, z )];
+          // SD::VERTEX_TSE
+          real_t u_d_11 = u_d[idx( x + 1, y - 1, z + 1 )];
+          // SD::VERTEX_TS
+          real_t u_d_12 = u_d[idx( x, y - 1, z + 1 )];
+          // SD::VERTEX_TC
+          real_t u_d_13 = u_d[idx( x, y, z + 1 )];
+          // SD::VERTEX_TW
+          real_t u_d_14 = u_d[idx( x - 1, y, z + 1 )];
+
+          real_t b_d_0 = b_d[idx( x, y, z )];
+
+          real_t a_0  = a[0];
+          real_t a_1  = a[1];
+          real_t a_2  = a[2];
+          real_t a_3  = a[3];
+          real_t a_4  = a[4];
+          real_t a_5  = a[5];
+          real_t a_6  = a[6];
+          real_t a_7  = a[7];
+          real_t a_8  = a[8];
+          real_t a_9  = a[9];
+          real_t a_10 = a[10];
+          real_t a_11 = a[11];
+          real_t a_12 = a[12];
+          real_t a_13 = a[13];
+          real_t a_14 = a[14];
+
+          // SD::VERTEX_C
+          tmp += a_0 * u_d_0;
+          // SD::VERTEX_W
+          tmp += a_1 * u_d_1;
+          // SD::VERTEX_S
+          tmp += a_2 * u_d_2;
+          // SD::VERTEX_SE
+          tmp += a_3 * u_d_3;
+          // SD::VERTEX_BNW
+          tmp += a_4 * u_d_4;
+          // SD::VERTEX_BN
+          tmp += a_5 * u_d_5;
+          // SD::VERTEX_BC
+          tmp += a_6 * u_d_6;
+          // SD::VERTEX_BE
+          tmp += a_7 * u_d_7;
+          // SD::VERTEX_E
+          tmp += a_8 * u_d_8;
+          // SD::VERTEX_N
+          tmp += a_9 * u_d_9;
+          // SD::VERTEX_NW
+          tmp += a_10 * u_d_10;
+          // SD::VERTEX_TSE
+          tmp += a_11 * u_d_11;
+          // SD::VERTEX_TS
+          tmp += a_12 * u_d_12;
+          // SD::VERTEX_TC
+          tmp += a_13 * u_d_13;
+          // SD::VERTEX_TW
+          tmp += a_14 * u_d_14;
+
+          return b_d_0 - tmp;
+       };
+
+   auto add_correction = [idx]( uint_t x, uint_t y, uint_t z, real_t const* w_d, real_t* u_d ) {
+      u_d[idx( x, y, z )] += w_d[idx( x, y, z )];
+   };
+
+   // ---------------------
+   // forward substitution:
+   // ---------------------
+   {
+      std::array< real_t, 7 > l_stencil{};
+
+      std::array< real_t, 15 > a_stencil{};
+
+      LIKWID_MARKER_START( "forward:new:4" );
+      for ( uint_t z = 1; z <= N_edge - 2; z += 1 )
+      {
+         opStencilProvider.setZ( h * real_c( z ) );
+         for ( uint_t y = 1; y <= N_edge - 2 - z; y += 1 )
+         {
+            opStencilProvider.setY( h * real_c( y ) );
+            // opStencilProvider.setStartX( h, h, a_stencil );
+            for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
+            {
+               w[idx( x, y, z )] = calc_residual( x, y, z, a_stencil, u, b );
+               apply_forward_substitution( x, y, z, w );
+               // const int r = idxf( x, y);
+               // for (int col = 0; col < delta_l.cols()-1; col += 1)
+               // delta_l.block(r, col, 8, 1).noalias() += delta_l.block(r, col+1, 8, 1);
+            }
+
+            for ( uint_t x = 1; x <= N_edge - 2 - z - y; x += 1 )
+            {
+               const int r = idxf( x, y);
+               for (int col = 0; col < delta_l.cols()-1; col += 1)
+                  delta_l.block(r, col, 8, 1).noalias() += delta_l.block(r, col+1, 8, 1);
+            }
+
+            //const int startx = idxf(1, y) * 8;
+            //const int numx = (N_edge - 2 - z - y) * 8;
+            //for (int col = 0; col < delta_l.cols()-1; col += 1)
+            //   delta_l.block(startx, col, numx, 1).noalias() += delta_l.block(startx, col+1, numx, 1);
+         }
+         // increase polynomials
+         {
+            //            for (int col = 0; col < delta_l.cols()-1; col += 1)
+            //            {
+            //               delta_l.col(col) += delta_l.col(col+1);
+            //            }
+         }
+      }
+
+      LIKWID_MARKER_STOP( "forward:new:4" );
    }
 }
 

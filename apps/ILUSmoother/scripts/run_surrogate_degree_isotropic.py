@@ -56,7 +56,7 @@ if __name__ == '__main__':
     op_deg = (5, 5, 5)
     for coefficient_degree in range(4):
         for deg in degrees:
-            for boundary_correction in [False, True]:
+            for boundary_correction in [True]:
                 ilu_deg = (deg, deg, deg)
                 #op_deg = (deg, deg, deg)
                 output.append(run_height_mg(ilu_surrogate, ilu_deg, op_deg, boundary_correction, kappa_type[coefficient_degree]))

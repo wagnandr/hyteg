@@ -107,14 +107,30 @@ std::shared_ptr< hyteg::SetupPrimitiveStorage > createDomain( walberla::Config::
       hyteg::SetupPrimitiveStorage setupStorageSS( meshInfoSS, uint_c( walberla::mpi::MPIManager::instance()->numProcesses() ) );
       setupStorageSS.setMeshBoundaryFlagsOnBoundary( 3, 0, true );
 
-      if ( parameters.getParameter< bool >( "auto_permutation" ) )
       {
-         WALBERLA_LOG_INFO_ON_ROOT( "applying auto permutation" );
-         using PermFormType = hyteg::forms::p1_div_k_grad_blending_q3;
-         PermFormType             form_const( []( auto ) { return 1.; }, []( auto ) { return 1.; } );
+         const uint_t      maxLevel         = parameters.getParameter< uint_t >( "maxLevel" );
+         const std::string permutation_type = parameters.getParameter< std::string >( "permutation_type" );
          hyteg::StoragePermutator permutator;
-         permutator.permutate( setupStorageSS, hyteg::ldlt::p1::dim3::ILUPermutator< PermFormType >( 6, form_const ) );
-         // permutator.permutate_randomly( setupStorageSS, parameters.getParameter< uint_t >( "tetrahedron_permutation" ) );
+         using PermFormType = hyteg::forms::p1_div_k_grad_blending_q3;
+         PermFormType form_const( []( auto ) { return 1.; }, []( auto ) { return 1.; } );
+         if ( permutation_type == "lfa" )
+         {
+            WALBERLA_LOG_INFO_ON_ROOT( "Applying LFA permutation." );
+            permutator.permutate( setupStorageSS, hyteg::ldlt::p1::dim3::ILUPermutator< PermFormType >( maxLevel, form_const ) );
+         }
+         else if ( permutation_type == "heuristic" )
+         {
+            WALBERLA_LOG_INFO_ON_ROOT( "Applying heuristic permutation." );
+            permutator.permutate( setupStorageSS, hyteg::ldlt::p1::dim3::ILUPermutatorHeuristic< PermFormType >( maxLevel, form_const ) );
+         }
+         else if ( permutation_type == "none" )
+         {
+            WALBERLA_LOG_INFO_ON_ROOT( "Applying NO permutation." );
+         }
+         else
+         {
+            WALBERLA_ABORT( "Unknown permutation_type " << permutation_type );
+         }
       }
 
       hyteg::IcosahedralShellMap::setMap( setupStorageSS );

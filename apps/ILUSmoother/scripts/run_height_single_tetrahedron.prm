@@ -32,13 +32,14 @@ Parameters
   // domain tetrahedron_regular;
   // domain tetrahedron_spade;
 
+  kappa_type constant;
+
   kappa_lower 1.0;
   kappa_upper 2.0;
 
-  auto_permutation true;
+  permutation_type lfa;
 
-  // use PCG with mg preconditioner
-  usePCG false;
+  solver_type gmg;
 
   // which smoother: hyteg_gs, eigen_ilu, inplace_ldlt
   // smoother_type surrogate_ldlt;
@@ -51,9 +52,21 @@ Parameters
   surrogate_degree_z 12;
   surrogate_skip_level 4;
 
+  ilu_use_boundary_correction false;
+
+  main_operator_stencil_type constant;
+
+  op_surrogate_degree_x 0;
+  op_surrogate_degree_y 0;
+  op_surrogate_degree_z 0;
+  op_surrogate_assembly_level 5;
+  op_surrogate_use_symmetry true;
+
   sm_steps_lower_primitives 1;
   sm_steps_lower_primitives_backward 1;
 
   // damping factor of the smoother
   relax 1.;
+
+  is_neumann false;
 }

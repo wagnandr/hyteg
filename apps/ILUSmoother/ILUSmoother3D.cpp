@@ -209,7 +209,18 @@ int main( int argc, char** argv )
 
    const std::string kappa_type = parameters.getParameter< std::string >( "kappa_type" );
 
+   const bool is_neumann = parameters.getParameter< bool >( "is_neumann" );
+
    const auto setupStorage = createDomain( parameters );
+
+   const std::string solver_type = parameters.getParameter< std::string >( "solver_type" );
+
+   if ( is_neumann )
+   {
+      setupStorage->setMeshBoundaryFlagsOnBoundary( 2, 0, true );
+      setupStorage->setMeshBoundaryFlagsByCentroidLocation(
+          1, []( const auto& p ) { return p[0] < 1e-16; }, true );
+   }
 
    // permutation
    {
@@ -217,23 +228,23 @@ int main( int argc, char** argv )
       StoragePermutator permutator;
       using PermFormType = forms::p1_div_k_grad_blending_q3;
       PermFormType form_const( []( auto ) { return 1.; }, []( auto ) { return 1.; } );
-      if (permutation_type == "lfa")
+      if ( permutation_type == "lfa" )
       {
-         WALBERLA_LOG_INFO_ON_ROOT("Applying LFA permutation.");
+         WALBERLA_LOG_INFO_ON_ROOT( "Applying LFA permutation." );
          permutator.permutate( *setupStorage, ldlt::p1::dim3::ILUPermutator< PermFormType >( maxLevel, form_const ) );
       }
-      else if (permutation_type == "heuristic")
+      else if ( permutation_type == "heuristic" )
       {
-         WALBERLA_LOG_INFO_ON_ROOT("Applying heuristic permutation.");
+         WALBERLA_LOG_INFO_ON_ROOT( "Applying heuristic permutation." );
          permutator.permutate( *setupStorage, ldlt::p1::dim3::ILUPermutatorHeuristic< PermFormType >( maxLevel, form_const ) );
       }
-      else if (permutation_type == "none")
+      else if ( permutation_type == "none" )
       {
-         WALBERLA_LOG_INFO_ON_ROOT("Applying NO permutation.");
+         WALBERLA_LOG_INFO_ON_ROOT( "Applying NO permutation." );
       }
       else
       {
-         WALBERLA_ABORT("Unknown permutation_type " << permutation_type);
+         WALBERLA_ABORT( "Unknown permutation_type " << permutation_type );
       }
    }
 
@@ -256,8 +267,8 @@ int main( int argc, char** argv )
 
    if ( kappa_type == "constant" )
    {
-      kappa2d = []( const Point3D& p ) { return 1.; };
-      kappa3d = []( const Point3D& p ) { return 1.; };
+      kappa2d = []( const Point3D& ) { return 1.; };
+      kappa3d = []( const Point3D& ) { return 1.; };
    }
    else if ( kappa_type == "linear" )
    {
@@ -358,7 +369,7 @@ int main( int argc, char** argv )
    {
       boundaryConditions = []( const hyteg::Point3D& p ) { return 2 * p[0] - p[1] + 0.5 * p[2]; };
 
-      kappa3d       = []( const hyteg::Point3D& p ) { return 1.; };
+      kappa3d       = []( const hyteg::Point3D& ) { return 1.; };
       rhsFunctional = []( const hyteg::Point3D& ) { return 0.; };
    }
    else if ( solution_type == "zero" || powermethod )
@@ -498,8 +509,29 @@ int main( int argc, char** argv )
        storage, smoother, coarseGridSolver, restrictionOperator, prolongationOperator, minLevel, maxLevel );
    multiGridSolver->setSmoothingSteps( num_smoothing_steps, num_smoothing_steps );
 
-   auto fineGridSolver = std::make_shared< hyteg::CGSolver< OperatorType > >(
-       storage, minLevel, maxLevel, max_outer_iter, mg_tolerance, multiGridSolver );
+   std::shared_ptr< hyteg::CGSolver< OperatorType > > fineGridSolver = nullptr;
+
+   if ( solver_type == "cg_gmg" )
+   {
+      WALBERLA_LOG_INFO_ON_ROOT("cg_gmg!")
+      fineGridSolver = std::make_shared< hyteg::CGSolver< OperatorType > >(
+          storage, minLevel, maxLevel, max_outer_iter, mg_tolerance, multiGridSolver );
+      fineGridSolver->setRealResidual( true );
+   }
+   else if ( solver_type == "cg_ilu" )
+   {
+      WALBERLA_LOG_INFO_ON_ROOT("cg_ilu!")
+      fineGridSolver = std::make_shared< hyteg::CGSolver< OperatorType > >(
+          storage, minLevel, maxLevel, max_outer_iter, mg_tolerance, smoother );
+      fineGridSolver->setRealResidual( true );
+   }
+   else if ( solver_type == "cg_none" )
+   {
+      WALBERLA_LOG_INFO_ON_ROOT("cg_none!")
+      fineGridSolver =
+          std::make_shared< hyteg::CGSolver< OperatorType > >( storage, minLevel, maxLevel, max_outer_iter, mg_tolerance );
+      fineGridSolver->setRealResidual( true );
+   }
 
    WALBERLA_LOG_INFO_ON_ROOT( "Starting V cycles" );
    WALBERLA_LOG_INFO_ON_ROOT( walberla::format( "%6s|%10s|%10s|%10s", "iter", "abs_res", "rel_res", "conv" ) );
@@ -523,7 +555,9 @@ int main( int argc, char** argv )
 
    double eigenvalue;
 
-   if ( parameters.getParameter< bool >( "usePCG" ) )
+   const bool usePCG = solver_type == "cg_gmg" || solver_type == "cg_ilu" || solver_type == "cg_none";
+
+   if ( usePCG )
    {
       fineGridSolver->setPrintInfo( true );
       fineGridSolver->solve( laplaceOperator, u, f, maxLevel );
@@ -539,6 +573,9 @@ int main( int argc, char** argv )
          }
 
          multiGridSolver->solve( laplaceOperator, u, f, maxLevel );
+
+         // if ( is_neumann )
+         //    vertexdof::projectMean( u, maxLevel );
 
          if ( powermethod )
          {
